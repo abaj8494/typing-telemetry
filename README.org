@@ -1,0 +1,139 @@
+#+TITLE: typtel - Typing Telemetry
+#+AUTHOR: Aayush Bajaj
+
+* Overview
+
+=typtel= is a keystroke tracking tool for developers. Unlike word counters, it tracks every keypress including modifier keys, escape sequences, and shortcuts - giving you accurate metrics of your actual typing activity.
+
+* Features
+
+- *Keystroke Counting*: Tracks every keypress, not just completed words
+- *Menu Bar Integration*: Shows daily count in macOS menu bar (Bartender compatible)
+- *BubbleTea TUI*: Beautiful terminal interface for viewing stats
+- *Hourly & Weekly Graphs*: Visualize your typing patterns
+- *SQLite Storage*: Persistent local storage of all metrics
+- *Brew Installable*: Easy installation via Homebrew
+
+* Installation
+
+** From Source
+
+#+begin_src shell
+git clone https://github.com/aayushbajaj/typing-telemetry.git
+cd typing-telemetry
+make build
+make install
+#+end_src
+
+** Via Homebrew (coming soon)
+
+#+begin_src shell
+brew tap aayushbajaj/tap
+brew install typtel
+#+end_src
+
+* Setup
+
+** Granting Accessibility Permissions
+
+=typtel= requires accessibility permissions to capture keystrokes:
+
+1. Open *System Preferences* > *Privacy & Security* > *Accessibility*
+2. Click the lock icon and authenticate
+3. Click the *+* button
+4. Navigate to =/usr/local/bin/typtel-menubar= (or wherever you installed it)
+5. Ensure the checkbox is enabled
+6. Restart the menu bar app
+
+** Starting the Menu Bar App
+
+#+begin_src shell
+# Start manually
+typtel-menubar
+
+# Or load as LaunchAgent (auto-start on login)
+cp ~/Library/LaunchAgents/com.typtel.menubar.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.typtel.menubar.plist
+#+end_src
+
+* Usage
+
+** CLI Commands
+
+#+begin_src shell
+# Open interactive TUI dashboard
+typtel
+
+# Show simple stats
+typtel stats
+
+# Get today's keystroke count (for scripts/menu bar)
+typtel today
+#+end_src
+
+** TUI Controls
+
+| Key       | Action           |
+|-----------+------------------|
+| =r=       | Refresh stats    |
+| =q= / =esc= | Quit             |
+
+* Architecture
+
+#+begin_src
+typing-telemetry/
+├── cmd/
+│   ├── typtel/           # CLI entry point
+│   ├── typtel-menubar/   # Menu bar app with integrated daemon
+│   └── daemon/           # Standalone daemon
+├── internal/
+│   ├── keylogger/        # CGO keystroke capture (macOS)
+│   ├── storage/          # SQLite persistence
+│   ├── tui/              # BubbleTea interface
+│   └── menubar/          # Menu bar integration
+├── pkg/
+│   └── stats/            # Statistics calculations
+├── scripts/              # LaunchAgent plist
+├── Formula/              # Homebrew formula
+├── Makefile
+└── go.mod
+#+end_src
+
+* Data Storage
+
+Data is stored in =~/.local/share/typtel/=:
+
+- =typtel.db=: SQLite database with keystroke data
+- =logs/=: Application logs
+
+* Privacy
+
+All data is stored locally on your machine. No data is sent to any external servers.
+
+* Development
+
+#+begin_src shell
+# Build all binaries
+make build
+
+# Run CLI
+make run-cli
+
+# Run menu bar app
+make run-menubar
+
+# Run tests
+make test
+
+# Clean build artifacts
+make clean
+#+end_src
+
+* Similar Projects
+
+- [[https://wordcounterapp.com][WordCounter]] - Word counting for writers (commercial)
+- [[https://github.com/bashbunni/typtea][typtea]] - Terminal typing test with BubbleTea
+
+* License
+
+MIT
