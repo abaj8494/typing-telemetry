@@ -10,6 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	// Flags for test command
+	testFile      string
+	testWordCount int
+)
+
 var rootCmd = &cobra.Command{
 	Use:   "typtel",
 	Short: "Typing telemetry - track your keystrokes",
@@ -35,9 +41,28 @@ var todayCmd = &cobra.Command{
 	},
 }
 
+var testCmd = &cobra.Command{
+	Use:   "test",
+	Short: "Start a typing test",
+	Long: `Start an interactive typing test to measure your WPM and accuracy.
+
+Examples:
+  typtel test                    # Default 25-word test
+  typtel test -w 50              # 50-word test
+  typtel test -f words.txt       # Use custom word list
+  typtel test -f passage.txt -w 100  # 100 words from custom file`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runTypingTest()
+	},
+}
+
 func init() {
+	testCmd.Flags().StringVarP(&testFile, "file", "f", "", "Path to text file with words/passages")
+	testCmd.Flags().IntVarP(&testWordCount, "words", "w", 25, "Number of words in the test")
+
 	rootCmd.AddCommand(statsCmd)
 	rootCmd.AddCommand(todayCmd)
+	rootCmd.AddCommand(testCmd)
 }
 
 func main() {
@@ -56,6 +81,15 @@ func runTUI() error {
 
 	p := tea.NewProgram(tui.New(store), tea.WithAltScreen())
 	_, err = p.Run()
+	return err
+}
+
+func runTypingTest() error {
+	p := tea.NewProgram(
+		tui.NewTypingTest(testFile, testWordCount),
+		tea.WithAltScreen(),
+	)
+	_, err := p.Run()
 	return err
 }
 
@@ -81,10 +115,27 @@ func showStats() error {
 		weekTotal += day.Keystrokes
 	}
 
-	fmt.Printf("Today: %d keystrokes\n", today.Keystrokes)
-	fmt.Printf("This week: %d keystrokes (avg: %d/day)\n", weekTotal, weekTotal/7)
+	// Calculate word estimates (keystrokes / 5)
+	todayWords := today.Keystrokes / 5
+	weekWords := weekTotal / 5
+
+	fmt.Println("📊 Typing Statistics")
+	fmt.Println("────────────────────")
+	fmt.Printf("Today:     %s keystrokes (~%s words)\n", formatNum(today.Keystrokes), formatNum(todayWords))
+	fmt.Printf("This week: %s keystrokes (~%s words)\n", formatNum(weekTotal), formatNum(weekWords))
+	fmt.Printf("Daily avg: %s keystrokes (~%s words)\n", formatNum(weekTotal/7), formatNum(weekWords/7))
 
 	return nil
+}
+
+func formatNum(n int64) string {
+	if n >= 1000000 {
+		return fmt.Sprintf("%.1fM", float64(n)/1000000)
+	}
+	if n >= 1000 {
+		return fmt.Sprintf("%.1fK", float64(n)/1000)
+	}
+	return fmt.Sprintf("%d", n)
 }
 
 func showToday() error {
