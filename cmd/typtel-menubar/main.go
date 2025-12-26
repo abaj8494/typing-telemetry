@@ -24,6 +24,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -49,6 +50,13 @@ func init() {
 func main() {
 	// Ensure we're on main thread
 	C.ensureMainThread()
+
+	// Ensure HOME is set (needed when launched via launchctl/open)
+	if os.Getenv("HOME") == "" {
+		if u, err := user.Current(); err == nil {
+			os.Setenv("HOME", u.HomeDir)
+		}
+	}
 
 	// Set up logging
 	logDir, err := getLogDir()

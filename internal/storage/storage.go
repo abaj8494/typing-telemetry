@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"os"
+	"os/user"
 	"path/filepath"
 	"time"
 
@@ -27,7 +28,12 @@ type HourlyStats struct {
 func getDataDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "", err
+		// Fallback: get home dir from user.Current()
+		if u, userErr := user.Current(); userErr == nil {
+			home = u.HomeDir
+		} else {
+			return "", err
+		}
 	}
 	dataDir := filepath.Join(home, ".local", "share", "typtel")
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
