@@ -10,6 +10,12 @@
         <string>BINARY_PATH</string>
     </array>
 
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>USER_HOME</string>
+    </dict>
+
     <key>RunAtLoad</key>
     <true/>
 

@@ -41,7 +41,7 @@ install: build
 	@cp $(BUILD_DIR)/$(DAEMON_NAME) $(PREFIX)/bin/
 	@echo "Installing LaunchAgent..."
 	@mkdir -p ~/Library/LaunchAgents
-	@sed 's|BINARY_PATH|$(PREFIX)/bin/$(MENUBAR_NAME)|g' scripts/com.typtel.menubar.plist > ~/Library/LaunchAgents/com.typtel.menubar.plist
+	@sed -e 's|BINARY_PATH|$(PREFIX)/bin/$(MENUBAR_NAME)|g' -e 's|USER_HOME|$(HOME)|g' scripts/com.typtel.menubar.plist > ~/Library/LaunchAgents/com.typtel.menubar.plist
 	@echo ""
 	@echo "Done! To start the menu bar app (run WITHOUT sudo):"
 	@echo "  launchctl load ~/Library/LaunchAgents/com.typtel.menubar.plist"
