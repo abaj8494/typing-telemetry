@@ -16,16 +16,13 @@
     <key>KeepAlive</key>
     <true/>
 
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+
     <key>StandardOutPath</key>
     <string>/tmp/typtel-menubar.out.log</string>
 
     <key>StandardErrorPath</key>
     <string>/tmp/typtel-menubar.err.log</string>
-
-    <key>ProcessType</key>
-    <string>Interactive</string>
-
-    <key>LegacyTimers</key>
-    <true/>
 </dict>
 </plist>
