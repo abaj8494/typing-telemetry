@@ -7,14 +7,13 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/open</string>
-        <string>-a</string>
-        <string>APP_PATH</string>
-        <string>--args</string>
-        <string>--launched-by-launchd</string>
+        <string>BINARY_PATH</string>
     </array>
 
     <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
     <true/>
 
     <key>StandardOutPath</key>
@@ -22,5 +21,11 @@
 
     <key>StandardErrorPath</key>
     <string>/tmp/typtel-menubar.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>LegacyTimers</key>
+    <true/>
 </dict>
 </plist>
