@@ -7,31 +7,20 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>BINARY_PATH</string>
+        <string>/usr/bin/open</string>
+        <string>-a</string>
+        <string>APP_PATH</string>
+        <string>--args</string>
+        <string>--launched-by-launchd</string>
     </array>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>HOME</key>
-        <string>USER_HOME</string>
-    </dict>
 
     <key>RunAtLoad</key>
     <true/>
-
-    <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <false/>
-    </dict>
 
     <key>StandardOutPath</key>
     <string>/tmp/typtel-menubar.out.log</string>
 
     <key>StandardErrorPath</key>
     <string>/tmp/typtel-menubar.err.log</string>
-
-    <key>ProcessType</key>
-    <string>Interactive</string>
 </dict>
 </plist>
