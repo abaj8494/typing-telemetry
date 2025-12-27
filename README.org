@@ -29,8 +29,8 @@ make install
 ** Via Homebrew
 
 #+begin_src shell
-brew tap aayushbajaj/typing-telemetry
-brew install typing-telemetry
+brew tap abaj8494/typing-telemetry
+brew install abaj8494/typing-telemetry/typing-telemetry
 brew services start typing-telemetry
 #+end_src
 
