@@ -3,7 +3,7 @@
 BINARY_NAME=typtel
 MENUBAR_NAME=typtel-menubar
 DAEMON_NAME=typtel-daemon
-VERSION?=0.2.0
+VERSION?=0.3.0
 BUILD_DIR=build
 PREFIX?=/usr/local
 

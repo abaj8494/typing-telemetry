@@ -94,10 +94,18 @@ func main() {
 	defer keylogger.Stop()
 
 	// Process keystrokes in background
+	// Track word boundaries: space (49), return (36), tab (48) indicate end of word
 	go func() {
 		for keycode := range keystrokeChan {
 			if err := store.RecordKeystroke(keycode); err != nil {
 				log.Printf("Failed to record keystroke: %v", err)
+			}
+			// Detect word boundaries - increment word count when word-ending keys are pressed
+			if isWordBoundary(keycode) {
+				date := time.Now().Format("2006-01-02")
+				if err := store.IncrementWordCount(date); err != nil {
+					log.Printf("Failed to increment word count: %v", err)
+				}
 			}
 		}
 	}()
@@ -150,8 +158,8 @@ func updateMenuBarTitle() {
 		return
 	}
 
-	words := stats.Keystrokes / 5
-	title := fmt.Sprintf("⌨️ %s | %sw", formatCompact(stats.Keystrokes), formatCompact(words))
+	// Use actual tracked word count instead of estimation
+	title := fmt.Sprintf("⌨️ %s | %sw", formatAbsolute(stats.Keystrokes), formatAbsolute(stats.Words))
 	menuet.App().SetMenuState(&menuet.MenuState{
 		Title: title,
 	})
@@ -161,27 +169,27 @@ func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
 	weekStats, _ := store.GetWeekStats()
 
-	var weekTotal int64
+	var weekKeystrokes, weekWords int64
 	if weekStats != nil {
 		for _, day := range weekStats {
-			weekTotal += day.Keystrokes
+			weekKeystrokes += day.Keystrokes
+			weekWords += day.Words
 		}
 	}
 
 	keystrokeCount := int64(0)
+	todayWords := int64(0)
 	if stats != nil {
 		keystrokeCount = stats.Keystrokes
+		todayWords = stats.Words
 	}
-
-	todayWords := keystrokeCount / 5
-	weekWords := weekTotal / 5
 
 	return []menuet.MenuItem{
 		{
-			Text: fmt.Sprintf("Today: %s keystrokes (~%s words)", formatNumber(keystrokeCount), formatNumber(todayWords)),
+			Text: fmt.Sprintf("Today: %s keystrokes (%s words)", formatAbsolute(keystrokeCount), formatAbsolute(todayWords)),
 		},
 		{
-			Text: fmt.Sprintf("This Week: %s keystrokes (~%s words)", formatNumber(weekTotal), formatNumber(weekWords)),
+			Text: fmt.Sprintf("This Week: %s keystrokes (%s words)", formatAbsolute(weekKeystrokes), formatAbsolute(weekWords)),
 		},
 		{
 			Type: menuet.Separator,
@@ -231,24 +239,23 @@ func getLogDir() (string, error) {
 	return logDir, nil
 }
 
-func formatNumber(n int64) string {
-	if n >= 1000000 {
-		return fmt.Sprintf("%.1fM", float64(n)/1000000)
+// formatAbsolute formats a number with comma separators for readability
+func formatAbsolute(n int64) string {
+	// Convert to string and add commas
+	s := fmt.Sprintf("%d", n)
+	if n < 0 {
+		return s
 	}
-	if n >= 1000 {
-		return fmt.Sprintf("%.1fK", float64(n)/1000)
-	}
-	return fmt.Sprintf("%d", n)
-}
 
-func formatCompact(n int64) string {
-	if n >= 1000000 {
-		return fmt.Sprintf("%.1fM", float64(n)/1000000)
+	// Add commas every 3 digits from the right
+	result := ""
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result += ","
+		}
+		result += string(c)
 	}
-	if n >= 1000 {
-		return fmt.Sprintf("%.1fK", float64(n)/1000)
-	}
-	return fmt.Sprintf("%d", n)
+	return result
 }
 
 func chartMenuItems() []menuet.MenuItem {
@@ -296,14 +303,17 @@ func generateChartsHTML(days int) (string, error) {
 		return "", err
 	}
 
-	// Prepare data for charts
+	// Prepare data for charts - use actual word counts
 	var labels, keystrokeData, wordData []string
+	var totalKeystrokes, totalWords int64
 	for _, stat := range histStats {
 		// Parse date to get short format
 		t, _ := time.Parse("2006-01-02", stat.Date)
 		labels = append(labels, fmt.Sprintf("'%s'", t.Format("Jan 2")))
 		keystrokeData = append(keystrokeData, fmt.Sprintf("%d", stat.Keystrokes))
-		wordData = append(wordData, fmt.Sprintf("%d", stat.Keystrokes/5))
+		wordData = append(wordData, fmt.Sprintf("%d", stat.Words))
+		totalKeystrokes += stat.Keystrokes
+		totalWords += stat.Words
 	}
 
 	// Prepare heatmap data
@@ -455,8 +465,8 @@ func generateChartsHTML(days int) (string, error) {
             <div class="stat-label">Total Keystrokes</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">~%s</div>
-            <div class="stat-label">Estimated Words</div>
+            <div class="stat-value">%s</div>
+            <div class="stat-label">Words</div>
         </div>
         <div class="stat-item">
             <div class="stat-value">%s</div>
@@ -470,7 +480,7 @@ func generateChartsHTML(days int) (string, error) {
             <canvas id="keystrokesChart"></canvas>
         </div>
         <div class="chart-box">
-            <h2>📝 Words per Day (estimated)</h2>
+            <h2>📝 Words per Day</h2>
             <canvas id="wordsChart"></canvas>
         </div>
     </div>
@@ -550,9 +560,9 @@ func generateChartsHTML(days int) (string, error) {
 </body>
 </html>`,
 		days,
-		formatNumber(calculateTotal(histStats)),
-		formatNumber(calculateTotal(histStats)/5),
-		formatNumber(calculateTotal(histStats)/int64(days)),
+		formatAbsolute(totalKeystrokes),
+		formatAbsolute(totalWords),
+		formatAbsolute(totalKeystrokes/int64(days)),
 		generateHourLabels(),
 		heatmapHTML,
 		strings.Join(labels, ","),
@@ -645,12 +655,19 @@ func getHeatmapColor(value, max int64) string {
 	return "#7bc96f"
 }
 
-func calculateTotal(stats []storage.DailyStats) int64 {
-	var total int64
-	for _, s := range stats {
-		total += s.Keystrokes
-	}
-	return total
-}
-
 type HourlyStats = storage.HourlyStats
+
+// isWordBoundary checks if the keycode represents a word boundary (end of word)
+// macOS keycodes: space=49, return=36, tab=48
+func isWordBoundary(keycode int) bool {
+	switch keycode {
+	case 49: // Space
+		return true
+	case 36: // Return/Enter
+		return true
+	case 48: // Tab
+		return true
+	default:
+		return false
+	}
+}
