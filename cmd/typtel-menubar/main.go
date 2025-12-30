@@ -165,6 +165,8 @@ func updateMenuBarTitle() {
 	})
 }
 
+const Version = "0.4.0"
+
 func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
 	weekStats, _ := store.GetWeekStats()
@@ -203,10 +205,29 @@ func menuItems() []menuet.MenuItem {
 			Type: menuet.Separator,
 		},
 		{
+			Text:    "About",
+			Clicked: showAbout,
+		},
+		{
 			Text:    "Quit",
 			Clicked: quit,
 		},
 	}
+}
+
+func showAbout() {
+	// Open GitHub page in browser
+	go func() {
+		cmd := exec.Command("open", "https://github.com/abaj8494/typing-telemetry")
+		cmd.Run()
+	}()
+
+	// Show alert with version info
+	menuet.App().Alert(menuet.Alert{
+		MessageText:     "Typing Telemetry",
+		InformativeText: fmt.Sprintf("Version %s\n\nTrack your keystrokes and typing speed.\n\nGitHub: github.com/abaj8494/typing-telemetry", Version),
+		Buttons:         []string{"OK"},
+	})
 }
 
 func quit() {

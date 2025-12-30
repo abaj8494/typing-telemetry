@@ -84,12 +84,45 @@ typtel test -w 50
 typtel test -f words.txt
 #+end_src
 
+** Typing Test Controls
+
+The typing test includes Monkeytype-style options and controls:
+
+| Key       | Action                              |
+|-----------+-------------------------------------|
+| =tab=     | Restart test with new words         |
+| =esc=     | Open options menu                   |
+| =enter=   | Start new test (after completion)   |
+| =ctrl+c=  | Quit                                |
+
+** Typing Test Options
+
+Press =esc= during the test to access the options menu. Options include:
+
+- *Layout*: Emulate different keyboard layouts (QWERTY, Dvorak, Colemak)
+- *Live WPM*: Toggle real-time WPM display while typing
+- *Test Length*: Set word count (10, 25, 50, 100, 200)
+- *Uppercase*: Include uppercase letters in words
+- *Punctuation*: Include punctuation marks
+- *Pace Caret*: Ghost cursor to pace against (off, PB, average, custom WPM)
+
+The options menu supports fuzzy search - just start typing to filter options.
+
 ** TUI Controls
 
 | Key       | Action           |
 |-----------+------------------|
 | =r=       | Refresh stats    |
 | =q= / =esc= | Quit             |
+
+** Updating
+
+To update to the latest version:
+
+#+begin_src shell
+brew update && brew upgrade typing-telemetry
+brew services restart typing-telemetry
+#+end_src
 
 * Architecture
 
@@ -102,8 +135,7 @@ typing-telemetry/
 ├── internal/
 │   ├── keylogger/        # CGO keystroke capture (macOS)
 │   ├── storage/          # SQLite persistence
-│   ├── tui/              # BubbleTea interface
-│   └── menubar/          # Menu bar integration
+│   └── tui/              # BubbleTea interface
 ├── pkg/
 │   └── stats/            # Statistics calculations
 ├── scripts/              # LaunchAgent plist

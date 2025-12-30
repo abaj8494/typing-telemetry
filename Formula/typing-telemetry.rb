@@ -1,11 +1,11 @@
 class TypingTelemetry < Formula
   desc "Keystroke telemetry for developers - track your daily typing"
   homepage "https://github.com/abaj8494/typing-telemetry"
-  version "0.3.0"
+  version "0.4.0"
   license "MIT"
 
   # Install from GitHub repository
-  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.3.0"
+  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.4.0"
   head "https://github.com/abaj8494/typing-telemetry.git", branch: "main"
 
   depends_on :macos
