@@ -165,7 +165,7 @@ func updateMenuBarTitle() {
 	})
 }
 
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
@@ -231,11 +231,25 @@ func showAbout() {
 }
 
 func quit() {
-	keylogger.Stop()
-	if store != nil {
-		store.Close()
+	response := menuet.App().Alert(menuet.Alert{
+		MessageText:     "Quit Typing Telemetry",
+		InformativeText: "Choose how to quit:",
+		Buttons:         []string{"Cancel", "Hide Menu Bar Only", "Stop Tracking & Quit"},
+	})
+
+	switch response.Button {
+	case 0: // Cancel
+		return
+	case 1: // Hide Menu Bar Only
+		// Just exit the menubar app, keylogger keeps running in the background
+		os.Exit(0)
+	case 2: // Stop Tracking & Quit
+		keylogger.Stop()
+		if store != nil {
+			store.Close()
+		}
+		os.Exit(0)
 	}
-	os.Exit(0)
 }
 
 func showPermissionAlert() {

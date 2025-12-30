@@ -151,6 +151,6 @@ func showToday() error {
 	}
 
 	// Output format suitable for menu bar scripts
-	fmt.Printf("%d", today.Keystrokes)
+	fmt.Printf("%d\n", today.Keystrokes)
 	return nil
 }

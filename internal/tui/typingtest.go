@@ -139,13 +139,12 @@ const (
 
 // TestOptions holds all configurable options
 type TestOptions struct {
-	Layout       string        // "qwerty", "dvorak", "colemak"
-	LiveWPM      bool          // Show live WPM while typing
-	WordCount    int           // Number of words in test
-	Uppercase    bool          // Include uppercase letters
-	Punctuation  bool          // Include punctuation
-	PaceCaret    PaceCaretMode // Pace caret mode
-	CustomPaceWPM float64      // Custom pace WPM target
+	Layout        string        // "qwerty", "dvorak", "colemak"
+	LiveWPM       bool          // Show live WPM while typing
+	WordCount     int           // Number of words in test
+	Punctuation   bool          // Include sentence-style punctuation and capitalization
+	PaceCaret     PaceCaretMode // Pace caret mode
+	CustomPaceWPM float64       // Custom pace WPM target
 }
 
 // Option represents a single option in the menu
@@ -178,6 +177,8 @@ type TypingTestModel struct {
 	subMenuIdx    int
 	personalBest  float64 // Personal best WPM
 	avgWPM        float64 // Average WPM from past tests
+	inCustomWPMInput bool   // Whether we're inputting custom WPM
+	customWPMInput   string // Buffer for custom WPM input
 }
 
 type tickMsg time.Time
@@ -188,12 +189,11 @@ func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
 	}
 
 	options := TestOptions{
-		Layout:       "qwerty",
-		LiveWPM:      true,
-		WordCount:    wordCount,
-		Uppercase:    false,
-		Punctuation:  false,
-		PaceCaret:    PaceOff,
+		Layout:        "qwerty",
+		LiveWPM:       true,
+		WordCount:     wordCount,
+		Punctuation:   false,
+		PaceCaret:     PaceOff,
 		CustomPaceWPM: 60.0,
 	}
 
@@ -222,16 +222,9 @@ func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
 			Value:       "25",
 		},
 		{
-			ID:          "uppercase",
-			Name:        "Uppercase",
-			Description: "Include uppercase letters",
-			Type:        "toggle",
-			Value:       false,
-		},
-		{
 			ID:          "punctuation",
 			Name:        "Punctuation",
-			Description: "Include punctuation marks",
+			Description: "Sentence-style capitalization and punctuation",
 			Type:        "toggle",
 			Value:       false,
 		},
@@ -296,28 +289,61 @@ func (m *TypingTestModel) generateText() string {
 
 	// Build the text
 	var result []string
+	startOfSentence := true
+	wordsInSentence := 0
+
 	for i := 0; i < wordCount; i++ {
 		word := words[i%len(words)]
 
-		// Apply uppercase if enabled
-		if m.options.Uppercase && rand.Float32() < 0.2 {
-			if rand.Float32() < 0.5 {
-				// Capitalize first letter
+		if m.options.Punctuation {
+			// Capitalize first letter at start of sentence
+			if startOfSentence && len(word) > 0 {
 				word = strings.ToUpper(string(word[0])) + word[1:]
-			} else {
-				// Random letter uppercase
-				idx := rand.Intn(len(word))
-				word = word[:idx] + strings.ToUpper(string(word[idx])) + word[idx+1:]
+				startOfSentence = false
+			}
+
+			wordsInSentence++
+
+			// Add punctuation with grammatically sensible patterns
+			// Sentences should be 4-12 words, with occasional commas
+			if wordsInSentence >= 3 && i < wordCount-1 {
+				// Add comma occasionally mid-sentence (after 3+ words)
+				if wordsInSentence < 8 && rand.Float32() < 0.15 {
+					word = word + ","
+				} else if wordsInSentence >= 4 && rand.Float32() < 0.25 {
+					// End sentence with period, question mark, or exclamation
+					r := rand.Float32()
+					if r < 0.7 {
+						word = word + "."
+					} else if r < 0.85 {
+						word = word + "?"
+					} else {
+						word = word + "!"
+					}
+					startOfSentence = true
+					wordsInSentence = 0
+				}
+			}
+
+			// Force sentence end if too long
+			if wordsInSentence >= 10 && i < wordCount-1 {
+				if !strings.HasSuffix(word, ".") && !strings.HasSuffix(word, "?") && !strings.HasSuffix(word, "!") && !strings.HasSuffix(word, ",") {
+					word = word + "."
+					startOfSentence = true
+					wordsInSentence = 0
+				}
 			}
 		}
 
-		// Apply punctuation if enabled
-		if m.options.Punctuation && rand.Float32() < 0.15 {
-			punct := punctuationMarks[rand.Intn(len(punctuationMarks))]
-			word = word + punct
-		}
-
 		result = append(result, word)
+	}
+
+	// End with a period if punctuation is enabled and doesn't already end with one
+	if m.options.Punctuation && len(result) > 0 {
+		lastWord := result[len(result)-1]
+		if !strings.HasSuffix(lastWord, ".") && !strings.HasSuffix(lastWord, "?") && !strings.HasSuffix(lastWord, "!") {
+			result[len(result)-1] = lastWord + "."
+		}
 	}
 
 	text := strings.Join(result, " ")
@@ -390,12 +416,9 @@ func (m *TypingTestModel) applyOption(opt Option, choiceIdx int) {
 		m.options.WordCount = count
 		m.wordCount = count
 		m.allOptions[2].Value = opt.Choices[choiceIdx]
-	case "uppercase":
-		m.options.Uppercase = !m.options.Uppercase
-		m.allOptions[3].Value = m.options.Uppercase
 	case "punctuation":
 		m.options.Punctuation = !m.options.Punctuation
-		m.allOptions[4].Value = m.options.Punctuation
+		m.allOptions[3].Value = m.options.Punctuation
 	case "pace_caret":
 		switch opt.Choices[choiceIdx] {
 		case "off":
@@ -406,8 +429,11 @@ func (m *TypingTestModel) applyOption(opt Option, choiceIdx int) {
 			m.options.PaceCaret = PaceAverage
 		case "custom":
 			m.options.PaceCaret = PaceCustom
+			// Enter custom WPM input mode
+			m.inCustomWPMInput = true
+			m.customWPMInput = fmt.Sprintf("%.0f", m.options.CustomPaceWPM)
 		}
-		m.allOptions[5].Value = opt.Choices[choiceIdx]
+		m.allOptions[4].Value = opt.Choices[choiceIdx]
 	}
 }
 
@@ -503,11 +529,43 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m TypingTestModel) updateOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle custom WPM input mode
+	if m.inCustomWPMInput {
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEsc, tea.KeyCtrlG:
+			m.inCustomWPMInput = false
+			return m, nil
+		case tea.KeyEnter:
+			if wpm, err := strconv.ParseFloat(m.customWPMInput, 64); err == nil && wpm > 0 {
+				m.options.CustomPaceWPM = wpm
+			}
+			m.inCustomWPMInput = false
+			m.inSubMenu = false
+			return m, nil
+		case tea.KeyBackspace:
+			if len(m.customWPMInput) > 0 {
+				m.customWPMInput = m.customWPMInput[:len(m.customWPMInput)-1]
+			}
+			return m, nil
+		case tea.KeyRunes:
+			// Only allow digits and decimal point
+			for _, r := range msg.Runes {
+				if (r >= '0' && r <= '9') || r == '.' {
+					m.customWPMInput += string(r)
+				}
+			}
+			return m, nil
+		}
+		return m, nil
+	}
+
 	switch msg.Type {
 	case tea.KeyCtrlC:
 		return m, tea.Quit
 
-	case tea.KeyEsc:
+	case tea.KeyEsc, tea.KeyCtrlG:
 		if m.inSubMenu {
 			m.inSubMenu = false
 			return m, nil
@@ -523,7 +581,7 @@ func (m TypingTestModel) updateOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.resetTest()
 		return m, nil
 
-	case tea.KeyUp:
+	case tea.KeyUp, tea.KeyCtrlP:
 		if m.inSubMenu {
 			if m.subMenuIdx > 0 {
 				m.subMenuIdx--
@@ -535,7 +593,7 @@ func (m TypingTestModel) updateOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyDown:
+	case tea.KeyDown, tea.KeyCtrlN:
 		if m.inSubMenu {
 			opt := m.filteredOpts[m.selectedIdx]
 			if m.subMenuIdx < len(opt.Choices)-1 {
@@ -558,7 +616,9 @@ func (m TypingTestModel) updateOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else if opt.Type == "choice" || opt.Type == "submenu" {
 			if m.inSubMenu {
 				m.applyOption(opt, m.subMenuIdx)
-				m.inSubMenu = false
+				if !m.inCustomWPMInput {
+					m.inSubMenu = false
+				}
 			} else {
 				m.inSubMenu = true
 				m.subMenuIdx = 0
@@ -654,14 +714,18 @@ func (m TypingTestModel) View() string {
 	// Show current options summary
 	b.WriteString("\n")
 	opts := fmt.Sprintf("layout: %s • words: %d", m.options.Layout, m.options.WordCount)
-	if m.options.Uppercase {
-		opts += " • UPPER"
-	}
 	if m.options.Punctuation {
 		opts += " • punct"
 	}
 	if m.options.PaceCaret != PaceOff {
-		opts += " • pace"
+		switch m.options.PaceCaret {
+		case PacePB:
+			opts += " • pace:pb"
+		case PaceAverage:
+			opts += " • pace:avg"
+		case PaceCustom:
+			opts += fmt.Sprintf(" • pace:%.0f", m.options.CustomPaceWPM)
+		}
 	}
 	b.WriteString(promptStyle.Render(opts))
 
@@ -673,6 +737,20 @@ func (m TypingTestModel) renderOptions() string {
 
 	b.WriteString(optionsTitleStyle.Render("⚙️  Options"))
 	b.WriteString("\n\n")
+
+	// Show custom WPM input if in that mode
+	if m.inCustomWPMInput {
+		b.WriteString(promptStyle.Render("Enter custom pace WPM:"))
+		b.WriteString("\n\n")
+		inputDisplay := m.customWPMInput
+		if inputDisplay == "" {
+			inputDisplay = "_"
+		}
+		b.WriteString(searchBoxStyle.Render(inputDisplay + " WPM"))
+		b.WriteString("\n\n")
+		b.WriteString(helpStyle.Render("enter: confirm • esc/C-g: cancel"))
+		return optionsBoxStyle.Render(b.String())
+	}
 
 	// Search box
 	searchContent := m.searchQuery
@@ -703,7 +781,12 @@ func (m TypingTestModel) renderOptions() string {
 					valueStr = promptStyle.Render("off")
 				}
 			case string:
-				valueStr = valueStyle.Render(v)
+				// Show custom WPM value for pace_caret when set to custom
+				if opt.ID == "pace_caret" && v == "custom" {
+					valueStr = valueStyle.Render(fmt.Sprintf("%s (%.0f WPM)", v, m.options.CustomPaceWPM))
+				} else {
+					valueStr = valueStyle.Render(v)
+				}
 			}
 
 			if i == m.selectedIdx {
@@ -732,7 +815,7 @@ func (m TypingTestModel) renderOptions() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(helpStyle.Render("↑/↓: navigate • enter: select • esc/tab: close • type to search"))
+	b.WriteString(helpStyle.Render("↑/↓/C-p/C-n: navigate • enter: select • esc/tab/C-g: close • type to search"))
 
 	return optionsBoxStyle.Render(b.String())
 }

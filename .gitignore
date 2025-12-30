@@ -1,9 +1,9 @@
 # Build output
 build/
 dist/
-typtel
-typtel-menubar
-typtel-daemon
+/typtel
+/typtel-menubar
+/typtel-daemon
 
 # Go
 *.exe
