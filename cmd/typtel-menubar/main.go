@@ -241,7 +241,7 @@ func updateMenuBarTitle() {
 	})
 }
 
-const Version = "0.8.1"
+const Version = "0.8.2"
 
 func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
@@ -817,6 +817,22 @@ func generateChartsHTML(days int) (string, error) {
 		return "", err
 	}
 
+	// Get distance unit for charts
+	distanceUnit := store.GetDistanceUnit()
+	var unitLabel string
+	var unitDivisor float64
+	switch distanceUnit {
+	case storage.DistanceUnitCars:
+		unitLabel = "cars"
+		unitDivisor = 15.0 // 15 feet per car
+	case storage.DistanceUnitFrisbee:
+		unitLabel = "fields"
+		unitDivisor = 330.0 // 330 feet per frisbee field
+	default:
+		unitLabel = "feet"
+		unitDivisor = 1.0
+	}
+
 	// Prepare data for charts - use actual word counts
 	var labels, keystrokeData, wordData, mouseData []string
 	var totalKeystrokes, totalWords int64
@@ -830,10 +846,11 @@ func generateChartsHTML(days int) (string, error) {
 		totalKeystrokes += stat.Keystrokes
 		totalWords += stat.Words
 
-		// Add mouse data (convert to feet for chart)
+		// Add mouse data (convert to selected unit for chart)
 		if i < len(mouseStats) {
 			feet := mouseStats[i].TotalDistance / 100.0 / 12.0
-			mouseData = append(mouseData, fmt.Sprintf("%.1f", feet))
+			unitValue := feet / unitDivisor
+			mouseData = append(mouseData, fmt.Sprintf("%.1f", unitValue))
 			totalMouseDistance += mouseStats[i].TotalDistance
 		} else {
 			mouseData = append(mouseData, "0")
@@ -1015,7 +1032,7 @@ func generateChartsHTML(days int) (string, error) {
 
     <div class="charts-container">
         <div class="chart-box" style="grid-column: span 2;">
-            <h2>🖱️ Mouse Distance per Day (feet)</h2>
+            <h2>🖱️ Mouse Distance per Day (%s)</h2>
             <canvas id="mouseChart"></canvas>
         </div>
     </div>
@@ -1116,6 +1133,7 @@ func generateChartsHTML(days int) (string, error) {
 		formatDistance(totalMouseDistance),
 		generateHourLabels(),
 		heatmapHTML,
+		unitLabel,
 		strings.Join(labels, ","),
 		strings.Join(keystrokeData, ","),
 		strings.Join(labels, ","),
