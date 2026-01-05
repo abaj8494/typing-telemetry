@@ -1,11 +1,11 @@
 class TypingTelemetry < Formula
   desc "Keystroke and mouse telemetry for developers - track your daily typing and mouse movement"
   homepage "https://github.com/abaj8494/typing-telemetry"
-  version "0.8.4"
+  version "0.8.5"
   license "MIT"
 
   # Install from GitHub repository
-  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.8.4"
+  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.8.5"
   head "https://github.com/abaj8494/typing-telemetry.git", branch: "main"
 
   depends_on :macos
@@ -90,16 +90,11 @@ class TypingTelemetry < Formula
     user_apps = Pathname.new(Dir.home)/"Applications"
     user_apps.mkpath
 
-    # Force remove any existing Typtel.app (symlink, file, or directory)
+    # Force remove and recreate symlink using shell commands
+    # (Ruby's unlink fails due to macOS quarantine attributes on ~/Applications)
     target = user_apps/"Typtel.app"
-    if target.symlink?
-      target.unlink
-    elsif target.exist?
-      FileUtils.rm_rf(target)
-    end
-
-    # Create fresh symlink to the versioned app
-    target.make_symlink(opt_prefix/"Typtel.app")
+    system "rm", "-rf", target
+    system "ln", "-sf", opt_prefix/"Typtel.app", target
 
     # Touch the app bundle to update Finder/Spotlight
     system "touch", opt_prefix/"Typtel.app"

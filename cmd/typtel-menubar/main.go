@@ -241,7 +241,7 @@ func updateMenuBarTitle() {
 	})
 }
 
-const Version = "0.8.4"
+const Version = "0.8.5"
 
 func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
