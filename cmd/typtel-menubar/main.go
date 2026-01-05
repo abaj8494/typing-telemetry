@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/aayushbajaj/typing-telemetry/internal/keylogger"
+	"github.com/aayushbajaj/typing-telemetry/internal/mousetracker"
 	"github.com/aayushbajaj/typing-telemetry/internal/storage"
 	"github.com/caseymrm/menuet"
 )
@@ -110,6 +111,42 @@ func main() {
 		}
 	}()
 
+	// Start mouse tracker in background (uses same accessibility permissions)
+	mouseChan, err := mousetracker.Start()
+	if err != nil {
+		log.Printf("Warning: Failed to start mouse tracker: %v", err)
+		// Continue without mouse tracking - keylogger is more important
+	} else {
+		defer mousetracker.Stop()
+
+		// Set initial midnight position for today
+		pos := mousetracker.GetCurrentPosition()
+		date := time.Now().Format("2006-01-02")
+		if err := store.SetMidnightPosition(date, pos.X, pos.Y); err != nil {
+			log.Printf("Failed to set midnight position: %v", err)
+		}
+
+		// Process mouse movements in background
+		go func() {
+			currentDate := time.Now().Format("2006-01-02")
+			for movement := range mouseChan {
+				// Check if we've crossed midnight
+				newDate := time.Now().Format("2006-01-02")
+				if newDate != currentDate {
+					// New day - reset and set new midnight position
+					currentDate = newDate
+					if err := store.SetMidnightPosition(currentDate, movement.X, movement.Y); err != nil {
+						log.Printf("Failed to set midnight position: %v", err)
+					}
+				}
+
+				if err := store.RecordMouseMovement(movement.X, movement.Y, movement.Distance); err != nil {
+					log.Printf("Failed to record mouse movement: %v", err)
+				}
+			}
+		}()
+	}
+
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -158,8 +195,15 @@ func updateMenuBarTitle() {
 		return
 	}
 
+	// Get mouse stats too
+	mouseStats, _ := store.GetTodayMouseStats()
+	mouseDistance := ""
+	if mouseStats != nil && mouseStats.TotalDistance > 0 {
+		mouseDistance = fmt.Sprintf(" | 🖱️%s", formatDistance(mouseStats.TotalDistance))
+	}
+
 	// Use actual tracked word count instead of estimation
-	title := fmt.Sprintf("⌨️ %s | %sw", formatAbsolute(stats.Keystrokes), formatAbsolute(stats.Words))
+	title := fmt.Sprintf("⌨️ %s | %sw%s", formatAbsolute(stats.Keystrokes), formatAbsolute(stats.Words), mouseDistance)
 	menuet.App().SetMenuState(&menuet.MenuState{
 		Title: title,
 	})
@@ -170,12 +214,20 @@ const Version = "0.5.0"
 func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
 	weekStats, _ := store.GetWeekStats()
+	mouseStats, _ := store.GetTodayMouseStats()
+	weekMouseStats, _ := store.GetWeekMouseStats()
 
 	var weekKeystrokes, weekWords int64
+	var weekMouseDistance float64
 	if weekStats != nil {
 		for _, day := range weekStats {
 			weekKeystrokes += day.Keystrokes
 			weekWords += day.Words
+		}
+	}
+	if weekMouseStats != nil {
+		for _, day := range weekMouseStats {
+			weekMouseDistance += day.TotalDistance
 		}
 	}
 
@@ -186,12 +238,26 @@ func menuItems() []menuet.MenuItem {
 		todayWords = stats.Words
 	}
 
+	todayMouseDistance := float64(0)
+	if mouseStats != nil {
+		todayMouseDistance = mouseStats.TotalDistance
+	}
+
 	return []menuet.MenuItem{
 		{
 			Text: fmt.Sprintf("Today: %s keystrokes (%s words)", formatAbsolute(keystrokeCount), formatAbsolute(todayWords)),
 		},
 		{
+			Text: fmt.Sprintf("Today: 🖱️ %s mouse distance", formatDistance(todayMouseDistance)),
+		},
+		{
+			Type: menuet.Separator,
+		},
+		{
 			Text: fmt.Sprintf("This Week: %s keystrokes (%s words)", formatAbsolute(weekKeystrokes), formatAbsolute(weekWords)),
+		},
+		{
+			Text: fmt.Sprintf("This Week: 🖱️ %s mouse distance", formatDistance(weekMouseDistance)),
 		},
 		{
 			Type: menuet.Separator,
@@ -200,6 +266,11 @@ func menuItems() []menuet.MenuItem {
 			Text:     "View Charts",
 			Clicked:  openCharts,
 			Children: chartMenuItems,
+		},
+		{
+			Text:     "🏆 Stillness Leaderboard",
+			Clicked:  showLeaderboard,
+			Children: leaderboardMenuItems,
 		},
 		{
 			Type: menuet.Separator,
@@ -293,6 +364,34 @@ func formatAbsolute(n int64) string {
 	return result
 }
 
+// formatDistance formats mouse distance in a human-readable way
+// Pixels are converted to approximate real-world units assuming ~100 DPI
+func formatDistance(pixels float64) string {
+	// Convert pixels to meters (assuming ~100 DPI, 1 inch = 2.54 cm)
+	// 100 pixels = 1 inch = 2.54 cm = 0.0254 m
+	meters := pixels * 0.000254
+
+	if meters >= 1000 {
+		return fmt.Sprintf("%.1fkm", meters/1000)
+	} else if meters >= 1 {
+		return fmt.Sprintf("%.0fm", meters)
+	} else if meters >= 0.01 {
+		return fmt.Sprintf("%.0fcm", meters*100)
+	}
+	return fmt.Sprintf("%.0fpx", pixels)
+}
+
+// formatDistanceShort formats mouse distance for compact display
+func formatDistanceShort(pixels float64) string {
+	meters := pixels * 0.000254
+	if meters >= 1000 {
+		return fmt.Sprintf("%.1fkm", meters/1000)
+	} else if meters >= 1 {
+		return fmt.Sprintf("%.0fm", meters)
+	}
+	return fmt.Sprintf("%.0fcm", meters*100)
+}
+
 func chartMenuItems() []menuet.MenuItem {
 	return []menuet.MenuItem{
 		{
@@ -304,6 +403,204 @@ func chartMenuItems() []menuet.MenuItem {
 			Clicked: func() { openChartsWithDays(30) },
 		},
 	}
+}
+
+// leaderboardMenuItems returns the stillness leaderboard submenu
+func leaderboardMenuItems() []menuet.MenuItem {
+	entries, err := store.GetMouseLeaderboard(10)
+	if err != nil || len(entries) == 0 {
+		return []menuet.MenuItem{
+			{Text: "No data yet - keep tracking!"},
+		}
+	}
+
+	items := make([]menuet.MenuItem, 0, len(entries)+1)
+	items = append(items, menuet.MenuItem{
+		Text: "🧘 Days You Didn't Move The Mouse",
+	})
+
+	for _, entry := range entries {
+		t, _ := time.Parse("2006-01-02", entry.Date)
+		medal := ""
+		switch entry.Rank {
+		case 1:
+			medal = "🥇 "
+		case 2:
+			medal = "🥈 "
+		case 3:
+			medal = "🥉 "
+		}
+		items = append(items, menuet.MenuItem{
+			Text: fmt.Sprintf("%s#%d: %s - %s", medal, entry.Rank, t.Format("Jan 2, 2006"), formatDistance(entry.TotalDistance)),
+		})
+	}
+
+	return items
+}
+
+func showLeaderboard() {
+	// Open the leaderboard view in charts
+	go func() {
+		htmlPath, err := generateLeaderboardHTML()
+		if err != nil {
+			log.Printf("Failed to generate leaderboard: %v", err)
+			return
+		}
+		cmd := exec.Command("open", htmlPath)
+		if err := cmd.Run(); err != nil {
+			log.Printf("Failed to open leaderboard: %v", err)
+		}
+	}()
+}
+
+func generateLeaderboardHTML() (string, error) {
+	entries, err := store.GetMouseLeaderboard(30)
+	if err != nil {
+		return "", err
+	}
+
+	var rows strings.Builder
+	for _, entry := range entries {
+		t, _ := time.Parse("2006-01-02", entry.Date)
+		medal := ""
+		switch entry.Rank {
+		case 1:
+			medal = "🥇"
+		case 2:
+			medal = "🥈"
+		case 3:
+			medal = "🥉"
+		default:
+			medal = fmt.Sprintf("#%d", entry.Rank)
+		}
+		rows.WriteString(fmt.Sprintf(`
+			<tr>
+				<td class="rank">%s</td>
+				<td class="date">%s</td>
+				<td class="distance">%s</td>
+			</tr>`, medal, t.Format("Monday, Jan 2, 2006"), formatDistance(entry.TotalDistance)))
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Typtel - Stillness Leaderboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%%, #16213e 100%%);
+            color: #eee;
+            min-height: 100vh;
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(90deg, #ff6b6b, #feca57);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .leaderboard-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        table {
+            width: 100%%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            color: #888;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .rank {
+            font-size: 1.5em;
+            width: 80px;
+        }
+        .date {
+            color: #aaa;
+        }
+        .distance {
+            text-align: right;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .explanation {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            color: #888;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧘 Stillness Leaderboard</h1>
+    <p class="subtitle">Days You Didn't Move The Mouse (Much)</p>
+
+    <div class="leaderboard-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Date</th>
+                    <th>Distance</th>
+                </tr>
+            </thead>
+            <tbody>
+                %s
+            </tbody>
+        </table>
+
+        <div class="explanation">
+            <strong>What is this?</strong><br>
+            This leaderboard tracks the days when you moved your mouse the least. Less mouse movement
+            could indicate focused keyboard work, reading, or meditation sessions. The distance is
+            calculated as the total Euclidean distance your cursor traveled throughout the day,
+            converted to approximate real-world measurements (assuming ~100 DPI display).
+        </div>
+    </div>
+</body>
+</html>`, rows.String())
+
+	// Write to temp file
+	dataDir, err := getLogDir()
+	if err != nil {
+		return "", err
+	}
+	htmlPath := filepath.Join(dataDir, "leaderboard.html")
+	if err := os.WriteFile(htmlPath, []byte(html), 0644); err != nil {
+		return "", err
+	}
+
+	return htmlPath, nil
 }
 
 func openCharts() {
@@ -332,6 +629,12 @@ func generateChartsHTML(days int) (string, error) {
 		return "", err
 	}
 
+	// Get mouse historical data
+	mouseStats, err := store.GetMouseHistoricalStats(days)
+	if err != nil {
+		return "", err
+	}
+
 	// Get hourly data for heatmap
 	hourlyData, err := store.GetAllHourlyStatsForDays(days)
 	if err != nil {
@@ -339,9 +642,10 @@ func generateChartsHTML(days int) (string, error) {
 	}
 
 	// Prepare data for charts - use actual word counts
-	var labels, keystrokeData, wordData []string
+	var labels, keystrokeData, wordData, mouseData []string
 	var totalKeystrokes, totalWords int64
-	for _, stat := range histStats {
+	var totalMouseDistance float64
+	for i, stat := range histStats {
 		// Parse date to get short format
 		t, _ := time.Parse("2006-01-02", stat.Date)
 		labels = append(labels, fmt.Sprintf("'%s'", t.Format("Jan 2")))
@@ -349,6 +653,15 @@ func generateChartsHTML(days int) (string, error) {
 		wordData = append(wordData, fmt.Sprintf("%d", stat.Words))
 		totalKeystrokes += stat.Keystrokes
 		totalWords += stat.Words
+
+		// Add mouse data (convert to meters for chart)
+		if i < len(mouseStats) {
+			meters := mouseStats[i].TotalDistance * 0.000254
+			mouseData = append(mouseData, fmt.Sprintf("%.2f", meters))
+			totalMouseDistance += mouseStats[i].TotalDistance
+		} else {
+			mouseData = append(mouseData, "0")
+		}
 	}
 
 	// Prepare heatmap data
@@ -507,6 +820,10 @@ func generateChartsHTML(days int) (string, error) {
             <div class="stat-value">%s</div>
             <div class="stat-label">Daily Average</div>
         </div>
+        <div class="stat-item">
+            <div class="stat-value">%s</div>
+            <div class="stat-label">Mouse Distance</div>
+        </div>
     </div>
 
     <div class="charts-container">
@@ -517,6 +834,13 @@ func generateChartsHTML(days int) (string, error) {
         <div class="chart-box">
             <h2>📝 Words per Day</h2>
             <canvas id="wordsChart"></canvas>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-box" style="grid-column: span 2;">
+            <h2>🖱️ Mouse Distance per Day (meters)</h2>
+            <canvas id="mouseChart"></canvas>
         </div>
     </div>
 
@@ -591,6 +915,21 @@ func generateChartsHTML(days int) (string, error) {
             },
             options: chartConfig
         });
+
+        new Chart(document.getElementById('mouseChart'), {
+            type: 'bar',
+            data: {
+                labels: [%s],
+                datasets: [{
+                    data: [%s],
+                    backgroundColor: 'rgba(255, 107, 107, 0.6)',
+                    borderColor: 'rgba(255, 107, 107, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: chartConfig
+        });
     </script>
 </body>
 </html>`,
@@ -598,12 +937,15 @@ func generateChartsHTML(days int) (string, error) {
 		formatAbsolute(totalKeystrokes),
 		formatAbsolute(totalWords),
 		formatAbsolute(totalKeystrokes/int64(days)),
+		formatDistance(totalMouseDistance),
 		generateHourLabels(),
 		heatmapHTML,
 		strings.Join(labels, ","),
 		strings.Join(keystrokeData, ","),
 		strings.Join(labels, ","),
 		strings.Join(wordData, ","),
+		strings.Join(labels, ","),
+		strings.Join(mouseData, ","),
 	)
 
 	// Write to temp file
