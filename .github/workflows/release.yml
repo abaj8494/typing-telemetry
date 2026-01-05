@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build app bundle and CLI
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }} make app
+          VERSION=${{ steps.version.outputs.VERSION }} make build-cli
+
+      - name: Add icon and CLI to app bundle
+        run: |
+          cp assets/AppIcon.icns build/Typtel.app/Contents/Resources/
+          cp build/typtel build/Typtel.app/Contents/MacOS/
+
+      - name: Create release archive
+        run: |
+          cd build
+          zip -r Typtel-${{ steps.version.outputs.VERSION }}.zip Typtel.app
+          shasum -a 256 Typtel-${{ steps.version.outputs.VERSION }}.zip > Typtel-${{ steps.version.outputs.VERSION }}.zip.sha256
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/Typtel-${{ steps.version.outputs.VERSION }}.zip
+            build/Typtel-${{ steps.version.outputs.VERSION }}.zip.sha256
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

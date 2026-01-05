@@ -1,11 +1,11 @@
 class TypingTelemetry < Formula
   desc "Keystroke and mouse telemetry for developers - track your daily typing and mouse movement"
   homepage "https://github.com/abaj8494/typing-telemetry"
-  version "0.8.9"
+  version "0.9.0"
   license "MIT"
 
   # Install from GitHub repository
-  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.8.9"
+  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.9.0"
   head "https://github.com/abaj8494/typing-telemetry.git", branch: "main"
 
   depends_on :macos
@@ -74,20 +74,8 @@ class TypingTelemetry < Formula
     XML
   end
 
-  def post_install
-    # Install Typtel.app to /Applications for Spotlight/Finder access
-    app_source = prefix/"Typtel.app"
-    app_dest = Pathname.new("/Applications/Typtel.app")
-
-    # Remove old version if it exists
-    app_dest.rmtree if app_dest.exist?
-
-    # Copy the app bundle to /Applications
-    cp_r app_source, app_dest
-  end
-
   # Use Homebrew's service block for LaunchAgent management
-  # Run from /Applications/Typtel.app - standard macOS location
+  # Run from /Applications/Typtel.app after user copies it there
   service do
     run ["/Applications/Typtel.app/Contents/MacOS/typtel-menubar"]
     keep_alive true
@@ -99,28 +87,20 @@ class TypingTelemetry < Formula
 
   def caveats
     <<~EOS
-      Typtel v#{version} installed to /Applications!
+      RECOMMENDED: Use the cask instead for a proper /Applications install:
+        brew uninstall typing-telemetry
+        brew install --cask typtel
 
-      SETUP (one-time, persists across upgrades):
-        1. Open System Settings > Privacy & Security > Accessibility
-        2. Click + and navigate to /Applications
-        3. Select Typtel.app and enable the checkbox
-
-      START THE SERVICE:
-        brew services start typing-telemetry
+      If using the formula, setup requires:
+        1. Copy app: cp -R #{opt_prefix}/Typtel.app /Applications/
+        2. Grant accessibility to /Applications/Typtel.app
+        3. Start: brew services start typing-telemetry
 
       COMMANDS:
         typtel           - Interactive dashboard
         typtel stats     - Show statistics
         typtel today     - Today's keystroke count
         typtel test      - Typing speed test
-
-      SERVICE:
-        brew services start typing-telemetry
-        brew services stop typing-telemetry
-        brew services restart typing-telemetry
-
-      You can also launch Typtel from Spotlight (Cmd+Space, type "Typtel").
     EOS
   end
 
