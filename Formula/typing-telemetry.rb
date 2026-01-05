@@ -1,11 +1,11 @@
 class TypingTelemetry < Formula
   desc "Keystroke and mouse telemetry for developers - track your daily typing and mouse movement"
   homepage "https://github.com/abaj8494/typing-telemetry"
-  version "0.8.2"
+  version "0.8.3"
   license "MIT"
 
   # Install from GitHub repository
-  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.8.2"
+  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.8.3"
   head "https://github.com/abaj8494/typing-telemetry.git", branch: "main"
 
   depends_on :macos
@@ -75,8 +75,9 @@ class TypingTelemetry < Formula
   end
 
   # Use Homebrew's service block for LaunchAgent management
+  # Run from opt_bin so accessibility permissions persist across upgrades
   service do
-    run [opt_prefix/"Typtel.app/Contents/MacOS/typtel-menubar"]
+    run [opt_bin/"typtel-menubar"]
     keep_alive true
     process_type :interactive
     log_path var/"log/typtel-menubar.log"
@@ -111,8 +112,8 @@ class TypingTelemetry < Formula
       FIRST TIME SETUP:
         1. Open System Settings > Privacy & Security > Accessibility
         2. Click + and press Cmd+Shift+G
-        3. Paste: ~/Applications/Typtel.app
-        4. Enable the checkbox for Typtel
+        3. Paste: /opt/homebrew/bin/typtel-menubar
+        4. Enable the checkbox
         5. Start: brew services start typing-telemetry
 
       COMMANDS:
