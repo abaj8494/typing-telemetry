@@ -1,11 +1,11 @@
 class TypingTelemetry < Formula
   desc "Keystroke and mouse telemetry for developers - track your daily typing and mouse movement"
   homepage "https://github.com/abaj8494/typing-telemetry"
-  version "0.8.5"
+  version "0.8.6"
   license "MIT"
 
   # Install from GitHub repository
-  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.8.5"
+  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v0.8.6"
   head "https://github.com/abaj8494/typing-telemetry.git", branch: "main"
 
   depends_on :macos
@@ -85,31 +85,21 @@ class TypingTelemetry < Formula
     environment_variables HOME: Dir.home
   end
 
-  def post_install
-    # Ensure ~/Applications exists
-    user_apps = Pathname.new(Dir.home)/"Applications"
-    user_apps.mkpath
-
-    # Force remove and recreate symlink using shell commands
-    # (Ruby's unlink fails due to macOS quarantine attributes on ~/Applications)
-    target = user_apps/"Typtel.app"
-    system "rm", "-rf", target
-    system "ln", "-sf", opt_prefix/"Typtel.app", target
-
-    # Touch the app bundle to update Finder/Spotlight
-    system "touch", opt_prefix/"Typtel.app"
-  end
-
   def caveats
     <<~EOS
       Typtel v#{version} installed!
 
-      FIRST TIME SETUP:
+      FIRST TIME SETUP (run once):
+        ln -sf #{opt_prefix}/Typtel.app ~/Applications/Typtel.app
+
+      GRANT ACCESSIBILITY PERMISSIONS:
         1. Open System Settings > Privacy & Security > Accessibility
         2. Click + and press Cmd+Shift+G
         3. Paste: ~/Applications/Typtel.app
         4. Enable the checkbox for Typtel
-        5. Start: brew services start typing-telemetry
+
+      START THE SERVICE:
+        brew services start typing-telemetry
 
       You can also launch Typtel from Spotlight (Cmd+Space, type "Typtel")
       to restart the menubar if it disappears.
