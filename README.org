@@ -1,183 +1,113 @@
-#+TITLE: typtel - Typing Telemetry
+#+TITLE: Typtel - Typing Telemetry
 #+AUTHOR: Aayush Bajaj
 
 * Overview
 
-=typtel= is a keystroke tracking tool for developers. Unlike word counters, it tracks every keypress including modifier keys, escape sequences, and shortcuts - giving you accurate metrics of your actual typing activity.
+=typtel= is a keystroke and mouse tracking tool for developers. It tracks every keypress including modifier keys, escape sequences, and shortcuts - giving you accurate metrics of your actual typing and mousing activity.
 
 * Features
 
 - *Keystroke Counting*: Tracks every keypress, not just completed words
-- *Menu Bar Integration*: Shows daily count in macOS menu bar (Bartender compatible)
-- *Typing Speed Test*: Built-in WPM test with custom word lists
-- *BubbleTea TUI*: Beautiful terminal interface for viewing stats
-- *Hourly & Weekly Graphs*: Visualize your typing patterns
+- *Word Counting*: Detects word boundaries for accurate word counts
+- *Mouse Tracking*: Records mouse distance (in feet/miles) and click counts
+- *Menu Bar Integration*: Shows daily stats in macOS menu bar
+- *Settings Menu*: Configure what stats to display in the menu bar
+- *Stillness Leaderboard*: Track your least-mousey days
+- *Typing Speed Test*: Built-in WPM test with Monkeytype-style options
+- *Charts & Heatmaps*: Visualize your typing patterns over time
 - *SQLite Storage*: Persistent local storage of all metrics
-- *Brew Installable*: Easy installation via Homebrew
 
 * Installation
 
-** From Source
-
-#+begin_src shell
-git clone https://github.com/aayushbajaj/typing-telemetry.git
-cd typing-telemetry
-make build
-make install
-#+end_src
-
-** Via Homebrew
-
 #+begin_src shell
 brew tap abaj8494/typing-telemetry
-brew install abaj8494/typing-telemetry/typing-telemetry
-brew services start typing-telemetry
+brew install typing-telemetry
 #+end_src
 
 * Setup
 
-** Granting Accessibility Permissions
+** 1. Grant Accessibility Permissions
 
-=typtel= requires accessibility permissions to capture keystrokes:
+=typtel= requires accessibility permissions to capture keystrokes and mouse movements:
 
-1. Open *System Preferences* > *Privacy & Security* > *Accessibility*
-2. Click the lock icon and authenticate
-3. Click the *+* button
-4. Navigate to =/usr/local/bin/typtel-menubar= (or wherever you installed it)
-5. Ensure the checkbox is enabled
-6. Restart the menu bar app
+1. Open *System Settings* > *Privacy & Security* > *Accessibility*
+2. Click the *+* button
+3. Press =Cmd+Shift+G= and paste: =~/Applications/Typtel.app=
+4. Enable the checkbox for Typtel
+5. Restart the service (see below)
 
-** Starting the Menu Bar App
+** 2. Start the Service
 
 #+begin_src shell
-# If installed via Homebrew
 brew services start typing-telemetry
-
-# Or start manually
-typtel-menubar
-
-# Or load as LaunchAgent (auto-start on login)
-make start
 #+end_src
 
+The menu bar app will now run automatically on login.
+
 * Usage
+
+** Menu Bar
+
+The menu bar shows your daily stats. Click it to see:
+- Today's and this week's keystrokes, words, clicks, and mouse distance
+- Charts (weekly/monthly overviews with heatmaps)
+- Stillness Leaderboard (days with least mouse movement)
+- Settings (configure what to display)
 
 ** CLI Commands
 
 #+begin_src shell
-# Open interactive TUI dashboard
-typtel
-
-# Show simple stats
-typtel stats
-
-# Get today's keystroke count (for scripts/menu bar)
-typtel today
-
-# Start a typing speed test
-typtel test
-
-# Typing test with custom word count
-typtel test -w 50
-
-# Typing test with custom word list
-typtel test -f words.txt
+typtel              # Interactive TUI dashboard
+typtel stats        # Show statistics
+typtel today        # Today's keystroke count
+typtel test         # Typing speed test
+typtel test -w 50   # Test with 50 words
 #+end_src
 
-** Typing Test Controls
+** Typing Test
 
-The typing test includes Monkeytype-style options and controls:
+| Key       | Action                    |
+|-----------+---------------------------|
+| =tab=     | Restart with new words    |
+| =esc=     | Open options menu         |
+| =enter=   | Start new test            |
+| =ctrl+c=  | Quit                      |
 
-| Key       | Action                              |
-|-----------+-------------------------------------|
-| =tab=     | Restart test with new words         |
-| =esc=     | Open options menu                   |
-| =enter=   | Start new test (after completion)   |
-| =ctrl+c=  | Quit                                |
+Options (press =esc=): Layout emulation, live WPM, test length, uppercase, punctuation, pace caret.
 
-** Typing Test Options
+* Managing the Service
 
-Press =esc= during the test to access the options menu. Options include:
+#+begin_src shell
+brew services start typing-telemetry    # Start
+brew services stop typing-telemetry     # Stop
+brew services restart typing-telemetry  # Restart
+brew services info typing-telemetry     # Check status
+#+end_src
 
-- *Layout*: Emulate different keyboard layouts (QWERTY, Dvorak, Colemak)
-- *Live WPM*: Toggle real-time WPM display while typing
-- *Test Length*: Set word count (10, 25, 50, 100, 200)
-- *Uppercase*: Include uppercase letters in words
-- *Punctuation*: Include punctuation marks
-- *Pace Caret*: Ghost cursor to pace against (off, PB, average, custom WPM)
-
-The options menu supports fuzzy search - just start typing to filter options.
-
-** TUI Controls
-
-| Key       | Action           |
-|-----------+------------------|
-| =r=       | Refresh stats    |
-| =q= / =esc= | Quit             |
-
-** Updating
-
-To update to the latest version:
+* Updating
 
 #+begin_src shell
 brew update && brew upgrade typing-telemetry
 brew services restart typing-telemetry
 #+end_src
 
-* Architecture
-
-#+begin_src
-typing-telemetry/
-├── cmd/
-│   ├── typtel/           # CLI entry point
-│   ├── typtel-menubar/   # Menu bar app with integrated daemon
-│   └── daemon/           # Standalone daemon
-├── internal/
-│   ├── keylogger/        # CGO keystroke capture (macOS)
-│   ├── storage/          # SQLite persistence
-│   └── tui/              # BubbleTea interface
-├── pkg/
-│   └── stats/            # Statistics calculations
-├── scripts/              # LaunchAgent plist
-├── Formula/              # Homebrew formula
-├── Makefile
-└── go.mod
-#+end_src
-
 * Data Storage
 
-Data is stored in =~/.local/share/typtel/=:
-
-- =typtel.db=: SQLite database with keystroke data
+All data is stored locally in =~/.local/share/typtel/=:
+- =typtel.db=: SQLite database
 - =logs/=: Application logs
 
 * Privacy
 
-All data is stored locally on your machine. No data is sent to any external servers.
+All data stays on your machine. Nothing is sent externally.
 
-* Development
+* Uninstalling
 
 #+begin_src shell
-# Build all binaries
-make build
-
-# Run CLI
-make run-cli
-
-# Run menu bar app
-make run-menubar
-
-# Run tests
-make test
-
-# Clean build artifacts
-make clean
+brew services stop typing-telemetry
+brew uninstall typing-telemetry
+rm -rf ~/.local/share/typtel  # Optional: remove data
 #+end_src
-
-* Similar Projects
-
-- [[https://wordcounterapp.com][WordCounter]] - Word counting for writers (commercial)
-- [[https://github.com/bashbunni/typtea][typtea]] - Terminal typing test with BubbleTea
 
 * License
 

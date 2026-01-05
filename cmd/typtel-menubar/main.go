@@ -111,49 +111,54 @@ func main() {
 		}
 	}()
 
-	// Start mouse tracker in background (uses same accessibility permissions)
-	mouseChan, clickChan, err := mousetracker.Start()
-	if err != nil {
-		log.Printf("Warning: Failed to start mouse tracker: %v", err)
-		// Continue without mouse tracking - keylogger is more important
-	} else {
-		defer mousetracker.Stop()
+	// Start mouse tracker in background if enabled (uses same accessibility permissions)
+	mouseTrackingEnabled := store.IsMouseTrackingEnabled()
+	if mouseTrackingEnabled {
+		mouseChan, clickChan, err := mousetracker.Start()
+		if err != nil {
+			log.Printf("Warning: Failed to start mouse tracker: %v", err)
+			// Continue without mouse tracking - keylogger is more important
+		} else {
+			defer mousetracker.Stop()
 
-		// Set initial midnight position for today
-		pos := mousetracker.GetCurrentPosition()
-		date := time.Now().Format("2006-01-02")
-		if err := store.SetMidnightPosition(date, pos.X, pos.Y); err != nil {
-			log.Printf("Failed to set midnight position: %v", err)
-		}
+			// Set initial midnight position for today
+			pos := mousetracker.GetCurrentPosition()
+			date := time.Now().Format("2006-01-02")
+			if err := store.SetMidnightPosition(date, pos.X, pos.Y); err != nil {
+				log.Printf("Failed to set midnight position: %v", err)
+			}
 
-		// Process mouse movements in background
-		go func() {
-			currentDate := time.Now().Format("2006-01-02")
-			for movement := range mouseChan {
-				// Check if we've crossed midnight
-				newDate := time.Now().Format("2006-01-02")
-				if newDate != currentDate {
-					// New day - reset and set new midnight position
-					currentDate = newDate
-					if err := store.SetMidnightPosition(currentDate, movement.X, movement.Y); err != nil {
-						log.Printf("Failed to set midnight position: %v", err)
+			// Process mouse movements in background
+			go func() {
+				currentDate := time.Now().Format("2006-01-02")
+				for movement := range mouseChan {
+					// Check if we've crossed midnight
+					newDate := time.Now().Format("2006-01-02")
+					if newDate != currentDate {
+						// New day - reset and set new midnight position
+						currentDate = newDate
+						if err := store.SetMidnightPosition(currentDate, movement.X, movement.Y); err != nil {
+							log.Printf("Failed to set midnight position: %v", err)
+						}
+					}
+
+					if err := store.RecordMouseMovement(movement.X, movement.Y, movement.Distance); err != nil {
+						log.Printf("Failed to record mouse movement: %v", err)
 					}
 				}
+			}()
 
-				if err := store.RecordMouseMovement(movement.X, movement.Y, movement.Distance); err != nil {
-					log.Printf("Failed to record mouse movement: %v", err)
+			// Process mouse clicks in background
+			go func() {
+				for range clickChan {
+					if err := store.RecordMouseClick(); err != nil {
+						log.Printf("Failed to record mouse click: %v", err)
+					}
 				}
-			}
-		}()
-
-		// Process mouse clicks in background
-		go func() {
-			for range clickChan {
-				if err := store.RecordMouseClick(); err != nil {
-					log.Printf("Failed to record mouse click: %v", err)
-				}
-			}
-		}()
+			}()
+		}
+	} else {
+		log.Println("Mouse tracking is disabled")
 	}
 
 	// Handle graceful shutdown
@@ -236,7 +241,7 @@ func updateMenuBarTitle() {
 	})
 }
 
-const Version = "0.7.0"
+const Version = "0.8.0"
 
 func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
@@ -442,6 +447,7 @@ func chartMenuItems() []menuet.MenuItem {
 
 func settingsMenuItems() []menuet.MenuItem {
 	settings := store.GetMenubarSettings()
+	mouseTrackingEnabled := store.IsMouseTrackingEnabled()
 
 	checkmark := func(enabled bool) string {
 		if enabled {
@@ -488,6 +494,25 @@ func settingsMenuItems() []menuet.MenuItem {
 				s.ShowDistance = !s.ShowDistance
 				store.SaveMenubarSettings(s)
 				updateMenuBarTitle()
+			},
+		},
+		{
+			Type: menuet.Separator,
+		},
+		{
+			Text: "Tracking:",
+		},
+		{
+			Text: checkmark(mouseTrackingEnabled) + "Enable Mouse Tracking",
+			Clicked: func() {
+				enabled := store.IsMouseTrackingEnabled()
+				store.SetMouseTrackingEnabled(!enabled)
+				// Show restart message
+				menuet.App().Alert(menuet.Alert{
+					MessageText:     "Mouse Tracking " + map[bool]string{true: "Disabled", false: "Enabled"}[enabled],
+					InformativeText: "Restart the service for changes to take effect:\nbrew services restart typing-telemetry",
+					Buttons:         []string{"OK"},
+				})
 			},
 		},
 	}

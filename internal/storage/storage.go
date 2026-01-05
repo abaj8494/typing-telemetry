@@ -455,10 +455,11 @@ func abs(x float64) float64 {
 
 // Settings keys
 const (
-	SettingShowKeystrokes = "menubar_show_keystrokes"
-	SettingShowWords      = "menubar_show_words"
-	SettingShowClicks     = "menubar_show_clicks"
-	SettingShowDistance   = "menubar_show_distance"
+	SettingShowKeystrokes       = "menubar_show_keystrokes"
+	SettingShowWords            = "menubar_show_words"
+	SettingShowClicks           = "menubar_show_clicks"
+	SettingShowDistance         = "menubar_show_distance"
+	SettingMouseTrackingEnabled = "mouse_tracking_enabled"
 )
 
 // MenubarSettings represents what to show in the menubar
@@ -539,4 +540,16 @@ func boolToString(b bool) string {
 		return "true"
 	}
 	return "false"
+}
+
+// IsMouseTrackingEnabled returns whether mouse tracking is enabled (default: true)
+func (s *Store) IsMouseTrackingEnabled() bool {
+	val, _ := s.GetSetting(SettingMouseTrackingEnabled)
+	// Default to enabled if not set
+	return val != "false"
+}
+
+// SetMouseTrackingEnabled sets whether mouse tracking is enabled
+func (s *Store) SetMouseTrackingEnabled(enabled bool) error {
+	return s.SetSetting(SettingMouseTrackingEnabled, boolToString(enabled))
 }
