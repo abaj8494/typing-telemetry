@@ -478,12 +478,8 @@ func formatDistanceShort(pixels float64) string {
 func chartMenuItems() []menuet.MenuItem {
 	return []menuet.MenuItem{
 		{
-			Text:    "Weekly Overview",
-			Clicked: func() { openChartsWithDays(7) },
-		},
-		{
-			Text:    "Monthly Overview",
-			Clicked: func() { openChartsWithDays(30) },
+			Text:    "Open Charts",
+			Clicked: openCharts,
 		},
 	}
 }
@@ -551,13 +547,13 @@ func settingsMenuItems() []menuet.MenuItem {
 			Text: "Tracking:",
 		},
 		{
-			Text: checkmark(mouseTrackingEnabled) + "Enable Mouse Tracking",
+			Text: checkmark(mouseTrackingEnabled) + "Enable Mouse Distance",
 			Clicked: func() {
 				enabled := store.IsMouseTrackingEnabled()
 				store.SetMouseTrackingEnabled(!enabled)
 				// Show restart message
 				menuet.App().Alert(menuet.Alert{
-					MessageText:     "Mouse Tracking " + map[bool]string{true: "Disabled", false: "Enabled"}[enabled],
+					MessageText:     "Mouse Distance " + map[bool]string{true: "Disabled", false: "Enabled"}[enabled],
 					InformativeText: "Restart the app for changes to take effect.",
 					Buttons:         []string{"OK"},
 				})
@@ -624,14 +620,21 @@ func inertiaMaxSpeedMenuItems() []menuet.MenuItem {
 
 	return []menuet.MenuItem{
 		{
-			Text: checkmark(storage.InertiaSpeedInfinite) + "Infinite (no cap)",
+			Text: checkmark(storage.InertiaSpeedUltraFast) + "Ultra Fast (~140 keys/sec)",
 			Clicked: func() {
-				store.SetInertiaMaxSpeed(storage.InertiaSpeedInfinite)
+				store.SetInertiaMaxSpeed(storage.InertiaSpeedUltraFast)
 				updateInertiaConfig()
 			},
 		},
 		{
-			Text: checkmark(storage.InertiaSpeedFast) + "Fast (~100 keys/sec)",
+			Text: checkmark(storage.InertiaSpeedVeryFast) + "Very Fast (~125 keys/sec)",
+			Clicked: func() {
+				store.SetInertiaMaxSpeed(storage.InertiaSpeedVeryFast)
+				updateInertiaConfig()
+			},
+		},
+		{
+			Text: checkmark(storage.InertiaSpeedFast) + "Fast (~83 keys/sec)",
 			Clicked: func() {
 				store.SetInertiaMaxSpeed(storage.InertiaSpeedFast)
 				updateInertiaConfig()
@@ -641,6 +644,13 @@ func inertiaMaxSpeedMenuItems() []menuet.MenuItem {
 			Text: checkmark(storage.InertiaSpeedMedium) + "Medium (~50 keys/sec)",
 			Clicked: func() {
 				store.SetInertiaMaxSpeed(storage.InertiaSpeedMedium)
+				updateInertiaConfig()
+			},
+		},
+		{
+			Text: checkmark(storage.InertiaSpeedSlow) + "Slow (~20 keys/sec)",
+			Clicked: func() {
+				store.SetInertiaMaxSpeed(storage.InertiaSpeedSlow)
 				updateInertiaConfig()
 			},
 		},
@@ -709,6 +719,13 @@ func inertiaAccelRateMenuItems() []menuet.MenuItem {
 	}
 
 	return []menuet.MenuItem{
+		{
+			Text: checkmark(0.25) + "0.25x (very gentle)",
+			Clicked: func() {
+				store.SetInertiaAccelRate(0.25)
+				updateInertiaConfig()
+			},
+		},
 		{
 			Text: checkmark(0.5) + "0.5x (gentle)",
 			Clicked: func() {
@@ -989,12 +1006,8 @@ func generateLeaderboardHTML() (string, error) {
 }
 
 func openCharts() {
-	openChartsWithDays(14) // Default to 2 weeks
-}
-
-func openChartsWithDays(days int) {
 	go func() {
-		htmlPath, err := generateChartsHTML(days)
+		htmlPath, err := generateChartsHTML()
 		if err != nil {
 			log.Printf("Failed to generate charts: %v", err)
 			return
@@ -1007,67 +1020,71 @@ func openChartsWithDays(days int) {
 	}()
 }
 
-func generateChartsHTML(days int) (string, error) {
-	// Get historical data
-	histStats, err := store.GetHistoricalStats(days)
-	if err != nil {
-		return "", err
-	}
-
-	// Get mouse historical data
-	mouseStats, err := store.GetMouseHistoricalStats(days)
-	if err != nil {
-		return "", err
-	}
-
-	// Get hourly data for heatmap
-	hourlyData, err := store.GetAllHourlyStatsForDays(days)
-	if err != nil {
-		return "", err
-	}
-
-	// Get distance unit for charts
-	distanceUnit := store.GetDistanceUnit()
-	var unitLabel string
-	var unitDivisor float64
-	switch distanceUnit {
-	case storage.DistanceUnitCars:
-		unitLabel = "cars"
-		unitDivisor = 15.0 // 15 feet per car
-	case storage.DistanceUnitFrisbee:
-		unitLabel = "fields"
-		unitDivisor = 330.0 // 330 feet per frisbee field
-	default:
-		unitLabel = "feet"
-		unitDivisor = 1.0
-	}
-
-	// Prepare data for charts - use actual word counts
-	var labels, keystrokeData, wordData, mouseData []string
-	var totalKeystrokes, totalWords int64
-	var totalMouseDistance float64
-	for i, stat := range histStats {
-		// Parse date to get short format
-		t, _ := time.Parse("2006-01-02", stat.Date)
-		labels = append(labels, fmt.Sprintf("'%s'", t.Format("Jan 2")))
-		keystrokeData = append(keystrokeData, fmt.Sprintf("%d", stat.Keystrokes))
-		wordData = append(wordData, fmt.Sprintf("%d", stat.Words))
-		totalKeystrokes += stat.Keystrokes
-		totalWords += stat.Words
-
-		// Add mouse data (convert to selected unit for chart)
-		if i < len(mouseStats) {
-			feet := mouseStats[i].TotalDistance / 100.0 / 12.0
-			unitValue := feet / unitDivisor
-			mouseData = append(mouseData, fmt.Sprintf("%.1f", unitValue))
-			totalMouseDistance += mouseStats[i].TotalDistance
-		} else {
-			mouseData = append(mouseData, "0")
+func generateChartsHTML() (string, error) {
+	// Helper to prepare chart data for a given number of days
+	prepareChartData := func(days int) (labels, keystrokeData, wordData []string, mouseDataFeet []float64, totalKeystrokes, totalWords int64, totalMouseDistance float64, heatmapHTML string, err error) {
+		histStats, err := store.GetHistoricalStats(days)
+		if err != nil {
+			return nil, nil, nil, nil, 0, 0, 0, "", err
 		}
+
+		mouseStats, err := store.GetMouseHistoricalStats(days)
+		if err != nil {
+			return nil, nil, nil, nil, 0, 0, 0, "", err
+		}
+
+		hourlyData, err := store.GetAllHourlyStatsForDays(days)
+		if err != nil {
+			return nil, nil, nil, nil, 0, 0, 0, "", err
+		}
+
+		for i, stat := range histStats {
+			t, _ := time.Parse("2006-01-02", stat.Date)
+			labels = append(labels, fmt.Sprintf("'%s'", t.Format("Jan 2")))
+			keystrokeData = append(keystrokeData, fmt.Sprintf("%d", stat.Keystrokes))
+			wordData = append(wordData, fmt.Sprintf("%d", stat.Words))
+			totalKeystrokes += stat.Keystrokes
+			totalWords += stat.Words
+
+			if i < len(mouseStats) {
+				feet := mouseStats[i].TotalDistance / 100.0 / 12.0
+				mouseDataFeet = append(mouseDataFeet, feet)
+				totalMouseDistance += mouseStats[i].TotalDistance
+			} else {
+				mouseDataFeet = append(mouseDataFeet, 0)
+			}
+		}
+
+		heatmapHTML = generateHeatmapHTML(hourlyData, days)
+		return
 	}
 
-	// Prepare heatmap data
-	heatmapHTML := generateHeatmapHTML(hourlyData, days)
+	// Get data for both weekly and monthly views
+	weeklyLabels, weeklyKeystrokes, weeklyWords, weeklyMouseFeet, weeklyTotalKeys, weeklyTotalWords, weeklyTotalMouse, weeklyHeatmap, err := prepareChartData(7)
+	if err != nil {
+		return "", err
+	}
+
+	monthlyLabels, monthlyKeystrokes, monthlyWords, monthlyMouseFeet, monthlyTotalKeys, monthlyTotalWords, monthlyTotalMouse, monthlyHeatmap, err := prepareChartData(30)
+	if err != nil {
+		return "", err
+	}
+
+	// Convert mouse feet to JSON arrays for each unit
+	formatMouseData := func(feetData []float64, divisor float64) string {
+		var result []string
+		for _, f := range feetData {
+			result = append(result, fmt.Sprintf("%.2f", f/divisor))
+		}
+		return strings.Join(result, ",")
+	}
+
+	weeklyMouseFeetStr := formatMouseData(weeklyMouseFeet, 1.0)
+	weeklyMouseCarsStr := formatMouseData(weeklyMouseFeet, 15.0)
+	weeklyMouseFieldsStr := formatMouseData(weeklyMouseFeet, 330.0)
+	monthlyMouseFeetStr := formatMouseData(monthlyMouseFeet, 1.0)
+	monthlyMouseCarsStr := formatMouseData(monthlyMouseFeet, 15.0)
+	monthlyMouseFieldsStr := formatMouseData(monthlyMouseFeet, 330.0)
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -1091,10 +1108,32 @@ func generateChartsHTML(days int) (string, error) {
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .subtitle {
-            text-align: center;
-            color: #888;
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
             margin-bottom: 30px;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .control-group label {
+            color: #888;
+            font-size: 0.9em;
+        }
+        select {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #eee;
+            padding: 8px 16px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        select:hover {
+            background: rgba(255,255,255,0.15);
         }
         .charts-container {
             display: grid;
@@ -1206,54 +1245,70 @@ func generateChartsHTML(days int) (string, error) {
     </style>
 </head>
 <body>
-    <h1>⌨️ Typtel Statistics</h1>
-    <p class="subtitle">Last %d days of typing activity</p>
+    <h1>Typtel Statistics</h1>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Time Period:</label>
+            <select id="periodSelect" onchange="updateCharts()">
+                <option value="weekly">Weekly (7 days)</option>
+                <option value="monthly">Monthly (30 days)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Distance Unit:</label>
+            <select id="unitSelect" onchange="updateCharts()">
+                <option value="feet">Feet</option>
+                <option value="cars">Car Lengths (~15ft)</option>
+                <option value="fields">Frisbee Fields (~330ft)</option>
+            </select>
+        </div>
+    </div>
 
     <div class="stats-summary">
         <div class="stat-item">
-            <div class="stat-value">%s</div>
+            <div class="stat-value" id="totalKeystrokes">-</div>
             <div class="stat-label">Total Keystrokes</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">%s</div>
+            <div class="stat-value" id="totalWords">-</div>
             <div class="stat-label">Words</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">%s</div>
+            <div class="stat-value" id="avgKeystrokes">-</div>
             <div class="stat-label">Avg Keystrokes/Day</div>
         </div>
         <div class="stat-item">
-            <div class="stat-value">%s</div>
+            <div class="stat-value" id="totalMouse">-</div>
             <div class="stat-label">Mouse Distance</div>
         </div>
     </div>
 
     <div class="charts-container">
         <div class="chart-box">
-            <h2>📊 Keystrokes per Day</h2>
+            <h2>Keystrokes per Day</h2>
             <canvas id="keystrokesChart"></canvas>
         </div>
         <div class="chart-box">
-            <h2>📝 Words per Day</h2>
+            <h2>Words per Day</h2>
             <canvas id="wordsChart"></canvas>
         </div>
     </div>
 
     <div class="charts-container">
         <div class="chart-box" style="grid-column: span 2;">
-            <h2>🖱️ Mouse Distance per Day (%s)</h2>
+            <h2 id="mouseChartTitle">Mouse Distance per Day</h2>
             <canvas id="mouseChart"></canvas>
         </div>
     </div>
 
     <div class="heatmap-container">
         <div class="heatmap-box">
-            <h2>🔥 Activity Heatmap (Hourly)</h2>
+            <h2>Activity Heatmap (Hourly)</h2>
             <div class="hour-labels">
                 %s
             </div>
-            <div class="heatmap">
-                %s
+            <div class="heatmap" id="heatmapContainer">
             </div>
             <div class="legend">
                 <span class="legend-text">Less</span>
@@ -1268,87 +1323,135 @@ func generateChartsHTML(days int) (string, error) {
     </div>
 
     <script>
-        const chartConfig = {
-            responsive: true,
-            plugins: {
-                legend: { display: false }
+        // Data for both periods
+        const data = {
+            weekly: {
+                labels: [%s],
+                keystrokes: [%s],
+                words: [%s],
+                mouse: { feet: [%s], cars: [%s], fields: [%s] },
+                totalKeystrokes: %d,
+                totalWords: %d,
+                totalMouseFeet: %.2f,
+                days: 7,
+                heatmap: ` + "`%s`" + `
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: '#888' }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#888' }
-                }
+            monthly: {
+                labels: [%s],
+                keystrokes: [%s],
+                words: [%s],
+                mouse: { feet: [%s], cars: [%s], fields: [%s] },
+                totalKeystrokes: %d,
+                totalWords: %d,
+                totalMouseFeet: %.2f,
+                days: 30,
+                heatmap: ` + "`%s`" + `
             }
         };
 
-        new Chart(document.getElementById('keystrokesChart'), {
-            type: 'bar',
-            data: {
-                labels: [%s],
-                datasets: [{
-                    data: [%s],
-                    backgroundColor: 'rgba(0, 210, 255, 0.6)',
-                    borderColor: 'rgba(0, 210, 255, 1)',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: chartConfig
-        });
+        const unitLabels = { feet: 'feet', cars: 'car lengths', fields: 'frisbee fields' };
 
-        new Chart(document.getElementById('wordsChart'), {
-            type: 'line',
-            data: {
-                labels: [%s],
-                datasets: [{
-                    data: [%s],
-                    borderColor: 'rgba(122, 201, 111, 1)',
-                    backgroundColor: 'rgba(122, 201, 111, 0.2)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointBackgroundColor: 'rgba(122, 201, 111, 1)'
-                }]
-            },
-            options: chartConfig
-        });
+        let keystrokesChart, wordsChart, mouseChart;
 
-        new Chart(document.getElementById('mouseChart'), {
-            type: 'bar',
-            data: {
-                labels: [%s],
-                datasets: [{
-                    data: [%s],
-                    backgroundColor: 'rgba(255, 107, 107, 0.6)',
-                    borderColor: 'rgba(255, 107, 107, 1)',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: chartConfig
-        });
+        const chartConfig = {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#888' } },
+                x: { grid: { display: false }, ticks: { color: '#888' } }
+            }
+        };
+
+        function formatNumber(n) {
+            if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+            return n.toString();
+        }
+
+        function formatDistance(feet) {
+            if (feet >= 5280) return (feet/5280).toFixed(2) + ' mi';
+            return feet.toFixed(0) + ' ft';
+        }
+
+        function updateCharts() {
+            const period = document.getElementById('periodSelect').value;
+            const unit = document.getElementById('unitSelect').value;
+            const d = data[period];
+
+            // Update stats
+            document.getElementById('totalKeystrokes').textContent = formatNumber(d.totalKeystrokes);
+            document.getElementById('totalWords').textContent = formatNumber(d.totalWords);
+            document.getElementById('avgKeystrokes').textContent = formatNumber(Math.round(d.totalKeystrokes / d.days));
+            document.getElementById('totalMouse').textContent = formatDistance(d.totalMouseFeet);
+
+            // Update mouse chart title
+            document.getElementById('mouseChartTitle').textContent = 'Mouse Distance per Day (' + unitLabels[unit] + ')';
+
+            // Destroy existing charts
+            if (keystrokesChart) keystrokesChart.destroy();
+            if (wordsChart) wordsChart.destroy();
+            if (mouseChart) mouseChart.destroy();
+
+            // Create new charts
+            keystrokesChart = new Chart(document.getElementById('keystrokesChart'), {
+                type: 'bar',
+                data: {
+                    labels: d.labels,
+                    datasets: [{ data: d.keystrokes, backgroundColor: 'rgba(0, 210, 255, 0.6)', borderColor: 'rgba(0, 210, 255, 1)', borderWidth: 1, borderRadius: 4 }]
+                },
+                options: chartConfig
+            });
+
+            wordsChart = new Chart(document.getElementById('wordsChart'), {
+                type: 'line',
+                data: {
+                    labels: d.labels,
+                    datasets: [{ data: d.words, borderColor: 'rgba(122, 201, 111, 1)', backgroundColor: 'rgba(122, 201, 111, 0.2)', fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: 'rgba(122, 201, 111, 1)' }]
+                },
+                options: chartConfig
+            });
+
+            mouseChart = new Chart(document.getElementById('mouseChart'), {
+                type: 'bar',
+                data: {
+                    labels: d.labels,
+                    datasets: [{ data: d.mouse[unit], backgroundColor: 'rgba(255, 107, 107, 0.6)', borderColor: 'rgba(255, 107, 107, 1)', borderWidth: 1, borderRadius: 4 }]
+                },
+                options: chartConfig
+            });
+
+            // Update heatmap
+            document.getElementById('heatmapContainer').innerHTML = d.heatmap;
+        }
+
+        // Initialize
+        updateCharts();
     </script>
 </body>
 </html>`,
-		days,
-		formatAbsolute(totalKeystrokes),
-		formatAbsolute(totalWords),
-		formatAbsolute(totalKeystrokes/int64(days)),
-		formatDistance(totalMouseDistance),
-		unitLabel,
 		generateHourLabels(),
-		heatmapHTML,
-		strings.Join(labels, ","),
-		strings.Join(keystrokeData, ","),
-		strings.Join(labels, ","),
-		strings.Join(wordData, ","),
-		strings.Join(labels, ","),
-		strings.Join(mouseData, ","),
+		// Weekly data
+		strings.Join(weeklyLabels, ","),
+		strings.Join(weeklyKeystrokes, ","),
+		strings.Join(weeklyWords, ","),
+		weeklyMouseFeetStr,
+		weeklyMouseCarsStr,
+		weeklyMouseFieldsStr,
+		weeklyTotalKeys,
+		weeklyTotalWords,
+		float64(weeklyTotalMouse)/100.0/12.0, // Convert to feet
+		weeklyHeatmap,
+		// Monthly data
+		strings.Join(monthlyLabels, ","),
+		strings.Join(monthlyKeystrokes, ","),
+		strings.Join(monthlyWords, ","),
+		monthlyMouseFeetStr,
+		monthlyMouseCarsStr,
+		monthlyMouseFieldsStr,
+		monthlyTotalKeys,
+		monthlyTotalWords,
+		float64(monthlyTotalMouse)/100.0/12.0, // Convert to feet
+		monthlyHeatmap,
 	)
 
 	// Write to temp file

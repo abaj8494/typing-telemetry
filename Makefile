@@ -4,7 +4,7 @@ BINARY_NAME=typtel
 MENUBAR_NAME=typtel-menubar
 DAEMON_NAME=typtel-daemon
 APP_NAME=Typtel.app
-VERSION?=0.10.0
+VERSION?=1.0.0
 BUILD_DIR=build
 PREFIX?=/usr/local
 

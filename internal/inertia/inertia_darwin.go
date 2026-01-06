@@ -110,15 +110,47 @@ static CGEventRef nullEventRef() {
 import "C"
 
 import (
+	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 	"unsafe"
 )
 
+// Debug logging
+var (
+	debugMode   = true // Set to true for debugging
+	debugLogger *log.Logger
+)
+
+func init() {
+	if debugMode {
+		// Log to file in ~/.local/share/typtel/logs/
+		homeDir, _ := os.UserHomeDir()
+		logDir := filepath.Join(homeDir, ".local", "share", "typtel", "logs")
+		os.MkdirAll(logDir, 0755)
+		logFile, err := os.OpenFile(
+			filepath.Join(logDir, "inertia-debug.log"),
+			os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
+			0644,
+		)
+		if err == nil {
+			debugLogger = log.New(logFile, "", log.Ltime|log.Lmicroseconds)
+		}
+	}
+}
+
+func debugLog(format string, args ...interface{}) {
+	if debugMode && debugLogger != nil {
+		debugLogger.Printf(format, args...)
+	}
+}
+
 // Config holds inertia configuration
 type Config struct {
 	Enabled       bool
-	MaxSpeed      string  // "infinite", "fast", "medium"
+	MaxSpeed      string  // "very_fast", "fast", "medium"
 	Threshold     int     // ms before acceleration starts (default 150)
 	AccelRate     float64 // acceleration multiplier (default 1.0)
 }
@@ -141,10 +173,13 @@ var accelerationTable = []int{7, 12, 17, 21, 24, 26, 28, 30}
 const baseRepeatInterval = 35
 
 // Max speed caps (repeat interval in ms)
+// Capped at what terminals/editors can reasonably handle
 var maxSpeedCaps = map[string]int{
-	"infinite": 5,   // ~200 keys/sec
-	"fast":     10,  // ~100 keys/sec (8x faster than base)
-	"medium":   20,  // ~50 keys/sec (4x faster than base)
+	"ultra_fast": 7,   // ~140 keys/sec (pushing terminal limits)
+	"very_fast":  8,   // ~125 keys/sec
+	"fast":       12,  // ~83 keys/sec
+	"medium":     20,  // ~50 keys/sec
+	"slow":       50,  // ~20 keys/sec
 }
 
 // State tracking
@@ -154,6 +189,7 @@ type keyState struct {
 	lastEventTime time.Time
 	repeatTimer   *time.Timer
 	stopChan      chan struct{}
+	lastStopTime  time.Time // When key was released - to prevent race condition restarts
 }
 
 var (
@@ -327,28 +363,47 @@ func startKeyRepeat(keycode int) {
 	mu.Unlock()
 
 	// Start the repeat goroutine
-	go func(kc int, stopCh chan struct{}) {
+	go func(kc int, stopCh chan struct{}, initialDelay time.Duration) {
+		debugLog("REPEAT_START keycode=%d initialDelay=%v maxSpeed=%s accelRate=%.1f",
+			kc, initialDelay, cfg.MaxSpeed, cfg.AccelRate)
+
+		// Wait for the initial delay (threshold) before starting repeats
+		select {
+		case <-stopCh:
+			debugLog("REPEAT_CANCELLED_EARLY keycode=%d", kc)
+			return
+		case <-time.After(initialDelay):
+			debugLog("REPEAT_DELAY_DONE keycode=%d, starting acceleration", kc)
+		}
+
 		for {
 			mu.RLock()
 			s, ok := keyStates[kc]
 			if !ok || !s.isHeld || !config.Enabled {
 				mu.RUnlock()
+				debugLog("REPEAT_STOPPED keycode=%d ok=%v isHeld=%v enabled=%v",
+					kc, ok, ok && s.isHeld, config.Enabled)
 				return
 			}
 			s.keyCount++
-			interval := getRepeatInterval(s.keyCount, cfg)
+			keyCount := s.keyCount
+			interval := getRepeatInterval(keyCount, cfg)
 			mu.RUnlock()
+
+			debugLog("REPEAT_POST keycode=%d count=%d interval=%v", kc, keyCount, interval)
+
+			// Post only keyDown - NOT keyUp (keyUp would trigger stopKeyRepeat)
+			C.postKeyEvent(C.CGKeyCode(kc), C.bool(true))
 
 			select {
 			case <-stopCh:
+				debugLog("REPEAT_STOPPED_SIGNAL keycode=%d", kc)
 				return
 			case <-time.After(interval):
-				// Post the key event
-				C.postKeyEvent(C.CGKeyCode(kc), C.bool(true))
-				C.postKeyEvent(C.CGKeyCode(kc), C.bool(false))
+				// Continue to next repeat
 			}
 		}
-	}(keycode, state.stopChan)
+	}(keycode, state.stopChan, time.Duration(cfg.Threshold)*time.Millisecond)
 }
 
 // stopKeyRepeat stops the key repeat for a released key
@@ -362,6 +417,7 @@ func stopKeyRepeat(keycode int) {
 	}
 
 	state.isHeld = false
+	state.lastStopTime = time.Now() // Record when we stopped to prevent race condition restarts
 	if state.stopChan != nil {
 		select {
 		case <-state.stopChan:
@@ -370,6 +426,7 @@ func stopKeyRepeat(keycode int) {
 			close(state.stopChan)
 		}
 	}
+	debugLog("STOP_KEY keycode=%d lastStopTime=%v", keycode, state.lastStopTime)
 }
 
 // resetAllAcceleration resets all key acceleration (for double-tap shift)
@@ -426,22 +483,38 @@ func goInertiaEventCallback(proxy C.CGEventTapProxy, eventType C.CGEventType, ev
 	case C.kCGEventKeyDown:
 		isAutorepeat := C.isAutorepeatEvent(event) != false
 
-		if isAutorepeat {
-			// Suppress macOS autorepeat - we handle it ourselves
-			mu.RLock()
-			state, exists := keyStates[keycode]
-			isOurKey := exists && state.isHeld
-			mu.RUnlock()
+		// Check if we're already handling this key
+		mu.RLock()
+		state, exists := keyStates[keycode]
+		alreadyHeld := exists && state.isHeld
+		// Check if key was recently released (within 50ms) - likely a synthetic event in-flight
+		recentlyReleased := exists && !state.isHeld && time.Since(state.lastStopTime) < 50*time.Millisecond
+		mu.RUnlock()
 
-			if isOurKey {
-				return C.nullEventRef() // Suppress the event
+		debugLog("EVENT_KEYDOWN keycode=%d autorepeat=%v alreadyHeld=%v recentlyReleased=%v", keycode, isAutorepeat, alreadyHeld, recentlyReleased)
+
+		if isAutorepeat {
+			// Suppress macOS autorepeat - we generate our own
+			if alreadyHeld {
+				debugLog("SUPPRESS_AUTOREPEAT keycode=%d", keycode)
+				return C.nullEventRef()
 			}
+			debugLog("PASSTHROUGH keycode=%d (autorepeat but not tracked)", keycode)
+		} else if alreadyHeld {
+			// This is our synthetic event - let it through but don't restart
+			debugLog("PASSTHROUGH_SYNTHETIC keycode=%d", keycode)
+		} else if recentlyReleased {
+			// Synthetic event that arrived after keyUp - ignore to prevent restart
+			debugLog("IGNORE_LATE_SYNTHETIC keycode=%d (released %v ago)", keycode, time.Since(state.lastStopTime))
+			return C.nullEventRef()
 		} else {
 			// Initial key press - start our accelerating repeat
+			debugLog("START_TRACKING keycode=%d", keycode)
 			startKeyRepeat(keycode)
 		}
 
 	case C.kCGEventKeyUp:
+		debugLog("EVENT_KEYUP keycode=%d", keycode)
 		stopKeyRepeat(keycode)
 
 	case C.kCGEventFlagsChanged:
@@ -451,6 +524,7 @@ func goInertiaEventCallback(proxy C.CGEventTapProxy, eventType C.CGEventType, ev
 
 		if !isShiftDown && (keycode == leftShiftKeycode || keycode == rightShiftKeycode) {
 			// Shift was released - count as a tap
+			debugLog("SHIFT_TAP keycode=%d", keycode)
 			handleShiftTap()
 		}
 	}

@@ -1,10 +1,10 @@
 cask "typtel" do
-  version "0.9.0"
-  sha256 "c09dd752e7eacc5ed8902dfe03c6fd647171d4252d6a2c4dd57dad00676fec13"
+  version "1.0.0"
+  sha256 "9361af7997ddc7d3f272b57d8aabb93e771cdf71dc8db54172d8f89c34348da5"
 
   url "https://github.com/abaj8494/homebrew-typing-telemetry/releases/download/v#{version}/Typtel-#{version}.zip"
   name "Typtel"
-  desc "Keystroke and mouse telemetry for developers"
+  desc "Keystroke and mouse distance metrics for developers"
   homepage "https://github.com/abaj8494/typing-telemetry"
 
   # Install the app to /Applications

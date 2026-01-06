@@ -1,6 +1,6 @@
 # Typtel
 
-Keystroke and mouse tracking for developers. Tracks every keypress including modifiers, escape sequences, and shortcuts.
+Keystroke and mouse distance metrics for developers. Tracks every keypress including modifiers, escape sequences, and shortcuts.
 
 ## Installation
 
@@ -60,9 +60,9 @@ Toggle and configure via **Settings** > **Inertia Settings** in the menu bar:
 | Setting           | Options                          |
 |-------------------|----------------------------------|
 | Enable/Disable    | Toggle inertia on or off         |
-| Max Speed         | Infinite, Fast (100/s), Medium (50/s) |
+| Max Speed         | Ultra Fast (140/s), Very Fast (125/s), Fast (83/s), Medium (50/s), Slow (20/s) |
 | Threshold         | 50ms - 300ms before acceleration |
-| Acceleration Rate | 0.5x - 2.0x multiplier           |
+| Acceleration Rate | 0.25x - 2.0x multiplier          |
 
 Double-tap Shift to reset acceleration to base speed.
 

@@ -476,11 +476,13 @@ const (
 	DistanceUnitFrisbee = "frisbee" // ultimate frisbee field ~330ft
 )
 
-// Inertia max speed options
+// Inertia max speed options (capped at what terminals/editors can handle)
 const (
-	InertiaSpeedInfinite = "infinite" // No cap, keeps accelerating
-	InertiaSpeedFast     = "fast"     // Cap at ~100 keys/sec
-	InertiaSpeedMedium   = "medium"   // Cap at ~50 keys/sec
+	InertiaSpeedUltraFast = "ultra_fast" // Cap at ~140 keys/sec (pushing limits)
+	InertiaSpeedVeryFast  = "very_fast"  // Cap at ~125 keys/sec
+	InertiaSpeedFast      = "fast"       // Cap at ~83 keys/sec
+	InertiaSpeedMedium    = "medium"     // Cap at ~50 keys/sec
+	InertiaSpeedSlow      = "slow"       // Cap at ~20 keys/sec
 )
 
 // MenubarSettings represents what to show in the menubar
@@ -592,7 +594,7 @@ func (s *Store) SetDistanceUnit(unit string) error {
 // InertiaSettings represents inertia configuration
 type InertiaSettings struct {
 	Enabled   bool
-	MaxSpeed  string  // "infinite", "fast", "medium"
+	MaxSpeed  string  // "very_fast", "fast", "medium"
 	Threshold int     // ms before acceleration starts (default 150)
 	AccelRate float64 // acceleration multiplier (default 1.0)
 }

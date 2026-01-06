@@ -3,13 +3,13 @@
 
 * Overview
 
-=typtel= is a keystroke and mouse tracking tool for developers. It tracks every keypress including modifier keys, escape sequences, and shortcuts - giving you accurate metrics of your actual typing and mousing activity.
+=typtel= is a keystroke and mouse distance metrics tool for developers. It tracks every keypress including modifier keys, escape sequences, and shortcuts - giving you accurate metrics of your actual typing and mousing activity.
 
 * Features
 
 - *Keystroke Counting*: Tracks every keypress, not just completed words
 - *Word Counting*: Detects word boundaries for accurate word counts
-- *Mouse Tracking*: Records mouse distance (in feet/miles) and click counts
+- *Mouse Distance*: Records mouse distance (in feet/miles) and click counts
 - *Menu Bar Integration*: Shows daily stats in macOS menu bar
 - *Settings Menu*: Configure what stats to display in the menu bar
 - *Stillness Leaderboard*: Track your least-mousey days
