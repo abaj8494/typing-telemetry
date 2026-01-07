@@ -74,6 +74,80 @@ static void getMousePosition(double *x, double *y) {
     *y = cursor.y;
     CFRelease(event);
 }
+
+// Get average PPI across all displays
+// Returns the average PPI, or 0 if unable to determine
+static double getAverageDisplayPPI() {
+    uint32_t displayCount;
+    CGDirectDisplayID displays[16]; // Support up to 16 displays
+
+    // Get all active displays
+    if (CGGetActiveDisplayList(16, displays, &displayCount) != kCGErrorSuccess) {
+        return 0;
+    }
+
+    if (displayCount == 0) {
+        return 0;
+    }
+
+    double totalPPI = 0;
+    int validDisplays = 0;
+    double firstValidPPI = 0;
+
+    for (uint32_t i = 0; i < displayCount; i++) {
+        CGDirectDisplayID display = displays[i];
+
+        // Get pixel dimensions
+        size_t pixelWidth = CGDisplayPixelsWide(display);
+        size_t pixelHeight = CGDisplayPixelsHigh(display);
+
+        // Get physical size in millimeters
+        CGSize physicalSize = CGDisplayScreenSize(display);
+
+        // Skip if physical size is invalid (0 or negative)
+        if (physicalSize.width <= 0 || physicalSize.height <= 0) {
+            continue;
+        }
+
+        // Calculate PPI (using diagonal)
+        double pixelDiagonal = sqrt((double)(pixelWidth * pixelWidth + pixelHeight * pixelHeight));
+        double mmDiagonal = sqrt(physicalSize.width * physicalSize.width + physicalSize.height * physicalSize.height);
+        double inchDiagonal = mmDiagonal / 25.4;
+
+        if (inchDiagonal > 0) {
+            double ppi = pixelDiagonal / inchDiagonal;
+            totalPPI += ppi;
+            validDisplays++;
+
+            // Store first valid PPI for fallback
+            if (firstValidPPI == 0) {
+                firstValidPPI = ppi;
+            }
+        }
+    }
+
+    // If we got valid PPIs, return average
+    if (validDisplays > 0) {
+        return totalPPI / validDisplays;
+    }
+
+    // Fallback: if we have at least one valid PPI, multiply by display count
+    if (firstValidPPI > 0) {
+        return firstValidPPI; // Just use the one valid PPI we found
+    }
+
+    // No valid PPI found
+    return 0;
+}
+
+// Get the number of active displays
+static int getDisplayCount() {
+    uint32_t displayCount;
+    if (CGGetActiveDisplayList(0, NULL, &displayCount) != kCGErrorSuccess) {
+        return 0;
+    }
+    return (int)displayCount;
+}
 */
 import "C"
 import (
@@ -228,4 +302,39 @@ func ResetForNewDay() {
 	// Reset the initialized flag so next movement calculates from current position
 	// This allows proper tracking from midnight
 	initialized = false
+}
+
+// DefaultPPI is the fallback PPI when display info cannot be queried
+const DefaultPPI = 100.0
+
+// GetAveragePPI returns the average PPI across all connected displays.
+// It uses a cascading fallback approach:
+// 1. Query all displays and average their PPIs
+// 2. If some displays report 0, use the average of valid ones
+// 3. If all fail, fall back to DefaultPPI (100)
+func GetAveragePPI() float64 {
+	ppi := float64(C.getAverageDisplayPPI())
+
+	if ppi > 0 {
+		return ppi
+	}
+
+	// Fallback to default
+	return DefaultPPI
+}
+
+// GetDisplayCount returns the number of active displays
+func GetDisplayCount() int {
+	return int(C.getDisplayCount())
+}
+
+// PixelsToInches converts pixel distance to inches using the average display PPI
+func PixelsToInches(pixels float64) float64 {
+	ppi := GetAveragePPI()
+	return pixels / ppi
+}
+
+// PixelsToFeet converts pixel distance to feet using the average display PPI
+func PixelsToFeet(pixels float64) float64 {
+	return PixelsToInches(pixels) / 12.0
 }

@@ -424,11 +424,10 @@ func formatAbsolute(n int64) string {
 }
 
 // formatDistance formats mouse distance based on the selected unit setting
-// Pixels are converted to approximate real-world units assuming ~100 DPI
+// Pixels are converted to real-world units using the average display PPI
 func formatDistance(pixels float64) string {
-	// Convert pixels to feet (assuming ~100 DPI, 1 inch = 100 pixels)
-	// 100 pixels = 1 inch, 12 inches = 1 foot
-	feet := pixels / 100.0 / 12.0
+	// Convert pixels to feet using actual display PPI
+	feet := mousetracker.PixelsToFeet(pixels)
 
 	unit := store.GetDistanceUnit()
 	switch unit {
@@ -465,7 +464,7 @@ func formatDistance(pixels float64) string {
 
 // formatDistanceShort formats mouse distance for compact display
 func formatDistanceShort(pixels float64) string {
-	feet := pixels / 100.0 / 12.0
+	feet := mousetracker.PixelsToFeet(pixels)
 	if feet >= 5280 {
 		return fmt.Sprintf("%.1fmi", feet/5280)
 	} else if feet >= 1 {
@@ -603,7 +602,36 @@ func settingsMenuItems() []menuet.MenuItem {
 			Text:     "   Acceleration Rate",
 			Children: inertiaAccelRateMenuItems,
 		},
+		{
+			Type: menuet.Separator,
+		},
+		{
+			Text: "🔧 Debug:",
+		},
+		{
+			Text:    "   Show Display Info",
+			Clicked: showDisplayDebugInfo,
+		},
 	}
+}
+
+func showDisplayDebugInfo() {
+	ppi := mousetracker.GetAveragePPI()
+	displayCount := mousetracker.GetDisplayCount()
+
+	info := fmt.Sprintf("Displays Detected: %d\nAverage PPI: %.1f\n\n", displayCount, ppi)
+
+	if ppi == mousetracker.DefaultPPI {
+		info += "Note: Using fallback PPI (100).\nYour displays may not report physical dimensions."
+	} else {
+		info += fmt.Sprintf("Mouse distance is calculated using %.1f pixels per inch.", ppi)
+	}
+
+	menuet.App().Alert(menuet.Alert{
+		MessageText:     "Display Information",
+		InformativeText: info,
+		Buttons:         []string{"OK"},
+	})
 }
 
 // inertiaMaxSpeedMenuItems returns the max speed selection submenu
@@ -1046,7 +1074,7 @@ func generateChartsHTML() (string, error) {
 			totalWords += stat.Words
 
 			if i < len(mouseStats) {
-				feet := mouseStats[i].TotalDistance / 100.0 / 12.0
+				feet := mousetracker.PixelsToFeet(mouseStats[i].TotalDistance)
 				mouseDataFeet = append(mouseDataFeet, feet)
 				totalMouseDistance += mouseStats[i].TotalDistance
 			} else {
@@ -1438,7 +1466,7 @@ func generateChartsHTML() (string, error) {
 		weeklyMouseFieldsStr,
 		weeklyTotalKeys,
 		weeklyTotalWords,
-		float64(weeklyTotalMouse)/100.0/12.0, // Convert to feet
+		mousetracker.PixelsToFeet(float64(weeklyTotalMouse)),
 		weeklyHeatmap,
 		// Monthly data
 		strings.Join(monthlyLabels, ","),
@@ -1449,7 +1477,7 @@ func generateChartsHTML() (string, error) {
 		monthlyMouseFieldsStr,
 		monthlyTotalKeys,
 		monthlyTotalWords,
-		float64(monthlyTotalMouse)/100.0/12.0, // Convert to feet
+		mousetracker.PixelsToFeet(float64(monthlyTotalMouse)),
 		monthlyHeatmap,
 	)
 
