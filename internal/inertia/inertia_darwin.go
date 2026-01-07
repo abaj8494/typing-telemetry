@@ -439,6 +439,30 @@ func resetAllAcceleration() {
 	}
 }
 
+// stopOtherKeys stops inertia for all keys except the specified one
+// This is called when a new key is pressed to prevent inertia buildup
+// from continuing when the user switches to typing other keys
+func stopOtherKeys(exceptKeycode int) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	for kc, state := range keyStates {
+		if kc != exceptKeycode && state.isHeld {
+			state.isHeld = false
+			state.lastStopTime = time.Now()
+			if state.stopChan != nil {
+				select {
+				case <-state.stopChan:
+					// Already closed
+				default:
+					close(state.stopChan)
+				}
+			}
+			debugLog("STOP_OTHER_KEY keycode=%d (new key=%d pressed)", kc, exceptKeycode)
+		}
+	}
+}
+
 // handleShiftTap checks for double-tap shift and resets acceleration
 func handleShiftTap() {
 	now := time.Now()
@@ -508,7 +532,10 @@ func goInertiaEventCallback(proxy C.CGEventTapProxy, eventType C.CGEventType, ev
 			debugLog("IGNORE_LATE_SYNTHETIC keycode=%d (released %v ago)", keycode, time.Since(state.lastStopTime))
 			return C.nullEventRef()
 		} else {
-			// Initial key press - start our accelerating repeat
+			// Initial key press - stop inertia on all other held keys first
+			// This prevents the "swarm of characters" issue when switching keys
+			stopOtherKeys(keycode)
+			// Then start our accelerating repeat for this key
 			debugLog("START_TRACKING keycode=%d", keycode)
 			startKeyRepeat(keycode)
 		}

@@ -4,7 +4,7 @@ BINARY_NAME=typtel
 MENUBAR_NAME=typtel-menubar
 DAEMON_NAME=typtel-daemon
 APP_NAME=Typtel.app
-VERSION?=1.0.3
+VERSION?=1.1.0
 BUILD_DIR=build
 PREFIX?=/usr/local
 
@@ -92,6 +92,7 @@ app: build-menubar
 	@mkdir -p $(BUILD_DIR)/$(APP_NAME)/Contents/MacOS
 	@mkdir -p $(BUILD_DIR)/$(APP_NAME)/Contents/Resources
 	@cp $(BUILD_DIR)/$(MENUBAR_NAME) $(BUILD_DIR)/$(APP_NAME)/Contents/MacOS/
+	@cp assets/AppIcon.icns $(BUILD_DIR)/$(APP_NAME)/Contents/Resources/AppIcon.icns
 	@sed 's/__VERSION__/$(VERSION)/g' scripts/Info.plist > $(BUILD_DIR)/$(APP_NAME)/Contents/Info.plist
 	@echo "Built $(BUILD_DIR)/$(APP_NAME)"
 

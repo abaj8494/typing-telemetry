@@ -142,6 +142,8 @@ type TypingTestModel struct {
 	menuFocus     MenuFocus // Current UI focus
 	menuSelection int       // Selected menu item (0=stats)
 	showStats     bool      // Show stats panel
+	lastWPM       float64   // Last test WPM (for tab restart counting)
+	resultRecorded bool     // Whether current result has been recorded
 }
 
 type tickMsg time.Time
@@ -376,6 +378,33 @@ func (m *TypingTestModel) resetTest() {
 	m.typed = ""
 	m.state = StateReady
 	m.errors = 0
+	m.resultRecorded = false
+	m.lastWPM = 0
+}
+
+// recordTestResult records the current test result to statistics
+func (m *TypingTestModel) recordTestResult() {
+	if m.state != StateFinished || m.resultRecorded {
+		return
+	}
+
+	duration := m.endTime.Sub(m.startTime).Seconds()
+	wordsTyped := float64(len(m.targetText)) / 5.0
+	wpm := (wordsTyped / duration) * 60
+
+	// Update local stats
+	if wpm > m.personalBest {
+		m.personalBest = wpm
+	}
+	m.testCount++
+	if m.testCount == 1 {
+		m.avgWPM = wpm
+	} else {
+		m.avgWPM = ((m.avgWPM * float64(m.testCount-1)) + wpm) / float64(m.testCount)
+	}
+
+	m.lastWPM = wpm
+	m.resultRecorded = true
 }
 
 func (m *TypingTestModel) filterOptions() {
@@ -504,6 +533,10 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyTab:
+			// If test was completed but not recorded via Enter, record it now
+			if m.state == StateFinished && !m.resultRecorded {
+				m.recordTestResult()
+			}
 			// Reset test
 			m.resetTest()
 			return m, nil
@@ -522,17 +555,10 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyEnter:
 			if m.state == StateFinished {
-				// Update personal best
-				duration := m.endTime.Sub(m.startTime).Seconds()
-				wordsTyped := float64(len(m.targetText)) / 5.0
-				wpm := (wordsTyped / duration) * 60
-				if wpm > m.personalBest {
-					m.personalBest = wpm
+				// Record result if not already recorded
+				if !m.resultRecorded {
+					m.recordTestResult()
 				}
-				// Update average (weighted moving average)
-				m.testCount++
-				m.avgWPM = ((m.avgWPM * float64(m.testCount-1)) + wpm) / float64(m.testCount)
-
 				// Restart with new text
 				m.resetTest()
 			}
@@ -562,10 +588,14 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.errors++
 				}
 
-				// Check if finished (typed matches or exceeds target AND ends correctly)
-				if len(m.typed) >= len(m.targetText) && m.typed[:len(m.targetText)] == m.targetText {
-					m.state = StateFinished
-					m.endTime = time.Now()
+				// Check if finished: test completes when we've typed the exact target length
+				// AND the last character is correct
+				if len(m.typed) == len(m.targetText) {
+					// Check if last character matches
+					if m.typed[len(m.typed)-1] == m.targetText[len(m.typed)-1] {
+						m.state = StateFinished
+						m.endTime = time.Now()
+					}
 				}
 			}
 			return m, nil
@@ -712,10 +742,6 @@ func (m TypingTestModel) View() string {
 
 	var b strings.Builder
 
-	// Menubar at top
-	b.WriteString(m.renderMenuBar())
-	b.WriteString("\n\n")
-
 	// Calculate box width based on terminal width
 	boxWidth := m.width - 8
 	if boxWidth < 40 {
@@ -723,6 +749,12 @@ func (m TypingTestModel) View() string {
 	}
 	if boxWidth > 100 {
 		boxWidth = 100
+	}
+
+	// Only show menubar when NOT running
+	if m.state != StateRunning {
+		b.WriteString(m.renderMenuBar())
+		b.WriteString("\n\n")
 	}
 
 	// Build typing test content for the box
@@ -789,14 +821,14 @@ func (m TypingTestModel) View() string {
 
 	b.WriteString(typingBoxStyle.Render(testContent.String()))
 
-	// Help text OUTSIDE the box
-	b.WriteString("\n\n")
-	if m.state == StateFinished {
-		b.WriteString(helpStyle.Render("enter: new test • tab: restart • esc: options • ↑: menu • ctrl+c: quit"))
-	} else if m.state == StateRunning {
-		b.WriteString(helpStyle.Render("tab: restart • ctrl+c: quit"))
-	} else {
-		b.WriteString(helpStyle.Render("tab: restart • esc: options • ↑: menu • ctrl+c: quit"))
+	// Help text OUTSIDE the box - hide during running for cleaner UI
+	if m.state != StateRunning {
+		b.WriteString("\n\n")
+		if m.state == StateFinished {
+			b.WriteString(helpStyle.Render("enter: new test • tab: restart • esc: options • ↑: menu • ctrl+c: quit"))
+		} else {
+			b.WriteString(helpStyle.Render("tab: restart • esc: options • ↑: menu • ctrl+c: quit"))
+		}
 	}
 
 	return m.centerContent(b.String())

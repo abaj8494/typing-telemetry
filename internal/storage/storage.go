@@ -684,7 +684,22 @@ type TypingTestStats struct {
 	TestCount    int     // Number of tests completed
 }
 
-// GetTypingTestStats retrieves typing test statistics
+// TypingTestMode represents a specific configuration for typing tests
+type TypingTestMode struct {
+	WordCount   int
+	Punctuation bool
+}
+
+// ModeKey generates a unique key for a typing test mode
+func (m TypingTestMode) ModeKey() string {
+	punct := "no_punct"
+	if m.Punctuation {
+		punct = "punct"
+	}
+	return fmt.Sprintf("mode_%d_%s", m.WordCount, punct)
+}
+
+// GetTypingTestStats retrieves typing test statistics (global)
 func (s *Store) GetTypingTestStats() TypingTestStats {
 	stats := TypingTestStats{
 		PersonalBest: 0,
@@ -713,7 +728,37 @@ func (s *Store) GetTypingTestStats() TypingTestStats {
 	return stats
 }
 
-// SaveTypingTestResult saves a new typing test result and updates stats
+// GetTypingTestStatsForMode retrieves typing test statistics for a specific mode
+func (s *Store) GetTypingTestStatsForMode(mode TypingTestMode) TypingTestStats {
+	modeKey := mode.ModeKey()
+	stats := TypingTestStats{
+		PersonalBest: 0,
+		AverageWPM:   50.0,
+		TestCount:    0,
+	}
+
+	if val, _ := s.GetSetting(SettingTypingTestPB + "_" + modeKey); val != "" {
+		if v, err := parseFloat(val); err == nil {
+			stats.PersonalBest = v
+		}
+	}
+
+	if val, _ := s.GetSetting(SettingTypingTestAvgWPM + "_" + modeKey); val != "" {
+		if v, err := parseFloat(val); err == nil {
+			stats.AverageWPM = v
+		}
+	}
+
+	if val, _ := s.GetSetting(SettingTypingTestCount + "_" + modeKey); val != "" {
+		if v, err := parseInt(val); err == nil {
+			stats.TestCount = v
+		}
+	}
+
+	return stats
+}
+
+// SaveTypingTestResult saves a new typing test result and updates stats (global)
 func (s *Store) SaveTypingTestResult(wpm float64) error {
 	stats := s.GetTypingTestStats()
 
@@ -733,6 +778,34 @@ func (s *Store) SaveTypingTestResult(wpm float64) error {
 
 	// Update test count
 	return s.SetSetting(SettingTypingTestCount, intToString(newCount))
+}
+
+// SaveTypingTestResultForMode saves a typing test result for a specific mode
+func (s *Store) SaveTypingTestResultForMode(wpm float64, mode TypingTestMode) error {
+	modeKey := mode.ModeKey()
+	stats := s.GetTypingTestStatsForMode(mode)
+
+	// Update personal best for mode
+	if wpm > stats.PersonalBest {
+		if err := s.SetSetting(SettingTypingTestPB+"_"+modeKey, floatToString(wpm)); err != nil {
+			return err
+		}
+	}
+
+	// Update running average for mode
+	newCount := stats.TestCount + 1
+	newAvg := ((stats.AverageWPM * float64(stats.TestCount)) + wpm) / float64(newCount)
+	if err := s.SetSetting(SettingTypingTestAvgWPM+"_"+modeKey, floatToString(newAvg)); err != nil {
+		return err
+	}
+
+	// Update test count for mode
+	if err := s.SetSetting(SettingTypingTestCount+"_"+modeKey, intToString(newCount)); err != nil {
+		return err
+	}
+
+	// Also update global stats
+	return s.SaveTypingTestResult(wpm)
 }
 
 // GetTypingTestTheme retrieves the saved theme preference
