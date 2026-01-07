@@ -2,6 +2,8 @@
 
 Keystroke and mouse distance metrics for developers. Tracks every keypress including modifiers, escape sequences, and shortcuts.
 
+![Menu Bar](img/menubar.png)
+
 ## Installation
 
 ```sh
@@ -52,6 +54,14 @@ Click the menu bar icon to view:
 - Charts and heatmaps
 - Stillness leaderboard (least mouse movement)
 - Settings
+
+### Charts
+
+View detailed statistics and activity heatmaps via **View Charts** in the menu bar.
+
+![Statistics](img/charts-html.png)
+
+![Activity Heatmap](img/hourly-week.png)
 
 ## Inertia
 
