@@ -94,11 +94,17 @@ func runTUI() error {
 }
 
 func runTypingTest() error {
+	store, err := storage.New()
+	if err != nil {
+		return fmt.Errorf("failed to open storage: %w", err)
+	}
+	defer store.Close()
+
 	p := tea.NewProgram(
-		tui.NewTypingTest(testFile, testWordCount),
+		tui.NewTypingTestWithStore(testFile, testWordCount, store),
 		tea.WithAltScreen(),
 	)
-	_, err := p.Run()
+	_, err = p.Run()
 	return err
 }
 

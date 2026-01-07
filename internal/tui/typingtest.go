@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aayushbajaj/typing-telemetry/internal/storage"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sahilm/fuzzy"
@@ -96,6 +97,7 @@ type TestOptions struct {
 	PaceCaret     PaceCaretMode // Pace caret mode
 	CustomPaceWPM float64       // Custom pace WPM target
 	Theme         string        // Color theme
+	TestType      string        // "normal" or "custom"
 }
 
 // Option represents a single option in the menu
@@ -140,15 +142,24 @@ type TypingTestModel struct {
 	inCustomWPMInput bool   // Whether we're inputting custom WPM
 	customWPMInput   string // Buffer for custom WPM input
 	menuFocus     MenuFocus // Current UI focus
-	menuSelection int       // Selected menu item (0=stats)
+	menuSelection int       // Selected menu item (0=stats, 1=custom)
 	showStats     bool      // Show stats panel
 	lastWPM       float64   // Last test WPM (for tab restart counting)
 	resultRecorded bool     // Whether current result has been recorded
+	store         *storage.Store // Database storage for persistence
+	customTexts   []string  // Custom text snippets
+	showCustomPanel bool    // Show custom text panel
+	customTextInput string  // Buffer for custom text input
+	inCustomTextInput bool  // Whether we're inputting custom text
 }
 
 type tickMsg time.Time
 
 func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
+	return NewTypingTestWithStore(sourceFile, wordCount, nil)
+}
+
+func NewTypingTestWithStore(sourceFile string, wordCount int, store *storage.Store) TypingTestModel {
 	if wordCount <= 0 {
 		wordCount = 25
 	}
@@ -161,6 +172,7 @@ func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
 		PaceCaret:     PaceOff,
 		CustomPaceWPM: 60.0,
 		Theme:         "default",
+		TestType:      "normal",
 	}
 
 	allOptions := []Option{
@@ -171,6 +183,14 @@ func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
 			Type:        "choice",
 			Choices:     ThemeNames,
 			Value:       "default",
+		},
+		{
+			ID:          "test_type",
+			Name:        "Test Type",
+			Description: "Word source for test",
+			Type:        "choice",
+			Choices:     []string{"normal", "custom"},
+			Value:       "normal",
 		},
 		{
 			ID:          "layout",
@@ -225,6 +245,24 @@ func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
 		menuFocus:     FocusTyping,
 		menuSelection: 0,
 		showStats:     false,
+		store:         store,
+	}
+
+	// Load stats from storage if available
+	if store != nil {
+		stats := store.GetTypingTestStats()
+		m.personalBest = stats.PersonalBest
+		m.avgWPM = stats.AverageWPM
+		m.testCount = stats.TestCount
+		if m.avgWPM == 0 {
+			m.avgWPM = 50.0 // Default if no tests yet
+		}
+
+		// Load custom texts
+		customTextsStr := store.GetTypingTestCustomTexts()
+		if customTextsStr != "" {
+			m.customTexts = strings.Split(customTextsStr, "\n---\n")
+		}
 	}
 
 	m.targetText = m.generateText()
@@ -232,6 +270,16 @@ func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
 }
 
 func (m *TypingTestModel) generateText() string {
+	// If using custom test type and custom texts are available, use one directly
+	if m.options.TestType == "custom" && len(m.customTexts) > 0 {
+		// Pick a random custom text
+		idx := rand.Intn(len(m.customTexts))
+		text := strings.TrimSpace(m.customTexts[idx])
+		if text != "" {
+			return text
+		}
+	}
+
 	var words []string
 
 	if m.sourceFile != "" {
@@ -403,6 +451,15 @@ func (m *TypingTestModel) recordTestResult() {
 		m.avgWPM = ((m.avgWPM * float64(m.testCount-1)) + wpm) / float64(m.testCount)
 	}
 
+	// Persist to database if store is available
+	if m.store != nil {
+		mode := storage.TypingTestMode{
+			WordCount:   m.options.WordCount,
+			Punctuation: m.options.Punctuation,
+		}
+		m.store.SaveTypingTestResultForMode(wpm, mode)
+	}
+
 	m.lastWPM = wpm
 	m.resultRecorded = true
 }
@@ -431,26 +488,51 @@ func (m *TypingTestModel) filterOptions() {
 }
 
 func (m *TypingTestModel) applyOption(opt Option, choiceIdx int) {
+	// Find option index by ID for updating value
+	findOptIdx := func(id string) int {
+		for i, o := range m.allOptions {
+			if o.ID == id {
+				return i
+			}
+		}
+		return -1
+	}
+
 	switch opt.ID {
 	case "theme":
 		themeName := opt.Choices[choiceIdx]
 		m.options.Theme = themeName
-		m.allOptions[0].Value = themeName
+		if idx := findOptIdx("theme"); idx >= 0 {
+			m.allOptions[idx].Value = themeName
+		}
 		SetTheme(themeName)
+	case "test_type":
+		m.options.TestType = opt.Choices[choiceIdx]
+		if idx := findOptIdx("test_type"); idx >= 0 {
+			m.allOptions[idx].Value = opt.Choices[choiceIdx]
+		}
 	case "layout":
 		m.options.Layout = opt.Choices[choiceIdx]
-		m.allOptions[1].Value = opt.Choices[choiceIdx]
+		if idx := findOptIdx("layout"); idx >= 0 {
+			m.allOptions[idx].Value = opt.Choices[choiceIdx]
+		}
 	case "live_wpm":
 		m.options.LiveWPM = !m.options.LiveWPM
-		m.allOptions[2].Value = m.options.LiveWPM
+		if idx := findOptIdx("live_wpm"); idx >= 0 {
+			m.allOptions[idx].Value = m.options.LiveWPM
+		}
 	case "test_length":
 		count, _ := strconv.Atoi(opt.Choices[choiceIdx])
 		m.options.WordCount = count
 		m.wordCount = count
-		m.allOptions[3].Value = opt.Choices[choiceIdx]
+		if idx := findOptIdx("test_length"); idx >= 0 {
+			m.allOptions[idx].Value = opt.Choices[choiceIdx]
+		}
 	case "punctuation":
 		m.options.Punctuation = !m.options.Punctuation
-		m.allOptions[4].Value = m.options.Punctuation
+		if idx := findOptIdx("punctuation"); idx >= 0 {
+			m.allOptions[idx].Value = m.options.Punctuation
+		}
 	case "pace_caret":
 		switch opt.Choices[choiceIdx] {
 		case "off":
@@ -465,7 +547,9 @@ func (m *TypingTestModel) applyOption(opt Option, choiceIdx int) {
 			m.inCustomWPMInput = true
 			m.customWPMInput = fmt.Sprintf("%.0f", m.options.CustomPaceWPM)
 		}
-		m.allOptions[5].Value = opt.Choices[choiceIdx]
+		if idx := findOptIdx("pace_caret"); idx >= 0 {
+			m.allOptions[idx].Value = opt.Choices[choiceIdx]
+		}
 	}
 }
 
@@ -493,6 +577,11 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle custom text panel
+		if m.showCustomPanel {
+			return m.updateCustomPanel(msg)
+		}
+
 		// Handle menubar focus
 		if m.menuFocus == FocusMenuBar {
 			switch msg.Type {
@@ -501,10 +590,24 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyDown, tea.KeyEsc:
 				m.menuFocus = FocusTyping
 				return m, nil
+			case tea.KeyLeft:
+				if m.menuSelection > 0 {
+					m.menuSelection--
+				}
+				return m, nil
+			case tea.KeyRight:
+				if m.menuSelection < 1 { // 0=Stats, 1=Custom
+					m.menuSelection++
+				}
+				return m, nil
 			case tea.KeyEnter:
 				// Activate selected menu item
 				if m.menuSelection == 0 {
 					m.showStats = true
+				} else if m.menuSelection == 1 {
+					m.showCustomPanel = true
+					m.inCustomTextInput = false
+					m.customTextInput = ""
 				}
 				m.menuFocus = FocusTyping
 				return m, nil
@@ -595,6 +698,8 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if m.typed[len(m.typed)-1] == m.targetText[len(m.typed)-1] {
 						m.state = StateFinished
 						m.endTime = time.Now()
+						// Auto-save result immediately on completion
+						m.recordTestResult()
 					}
 				}
 			}
@@ -730,6 +835,67 @@ func (m TypingTestModel) updateOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m TypingTestModel) updateCustomPanel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.inCustomTextInput {
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEsc:
+			m.inCustomTextInput = false
+			m.customTextInput = ""
+			return m, nil
+		case tea.KeyEnter:
+			// Save the custom text
+			if strings.TrimSpace(m.customTextInput) != "" {
+				m.customTexts = append(m.customTexts, strings.TrimSpace(m.customTextInput))
+				// Persist to storage
+				if m.store != nil {
+					m.store.SetTypingTestCustomTexts(strings.Join(m.customTexts, "\n---\n"))
+				}
+			}
+			m.inCustomTextInput = false
+			m.customTextInput = ""
+			return m, nil
+		case tea.KeyBackspace:
+			if len(m.customTextInput) > 0 {
+				m.customTextInput = m.customTextInput[:len(m.customTextInput)-1]
+			}
+			return m, nil
+		case tea.KeyRunes, tea.KeySpace:
+			char := string(msg.Runes)
+			if msg.Type == tea.KeySpace {
+				char = " "
+			}
+			m.customTextInput += char
+			return m, nil
+		}
+		return m, nil
+	}
+
+	switch msg.Type {
+	case tea.KeyCtrlC:
+		return m, tea.Quit
+	case tea.KeyEsc:
+		m.showCustomPanel = false
+		return m, nil
+	case tea.KeyRunes:
+		// 'a' to add new text, 'd' to delete selected
+		key := string(msg.Runes)
+		if key == "a" || key == "A" {
+			m.inCustomTextInput = true
+			m.customTextInput = ""
+		} else if (key == "d" || key == "D") && len(m.customTexts) > 0 {
+			// Delete last custom text
+			m.customTexts = m.customTexts[:len(m.customTexts)-1]
+			if m.store != nil {
+				m.store.SetTypingTestCustomTexts(strings.Join(m.customTexts, "\n---\n"))
+			}
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
 func (m TypingTestModel) View() string {
 	if m.state == StateOptions {
 		return m.centerContent(m.renderOptions())
@@ -738,6 +904,11 @@ func (m TypingTestModel) View() string {
 	// Show stats panel if active
 	if m.showStats {
 		return m.centerContent(m.renderStatsPanel())
+	}
+
+	// Show custom text panel if active
+	if m.showCustomPanel {
+		return m.centerContent(m.renderCustomPanel())
 	}
 
 	var b strings.Builder
@@ -852,11 +1023,19 @@ func (m TypingTestModel) renderMenuBar() string {
 		statsLabel = promptStyle.Render("[ Stats ]")
 	}
 
+	// Custom button
+	customLabel := "[ Custom ]"
+	if m.menuFocus == FocusMenuBar && m.menuSelection == 1 {
+		customLabel = selectedOptionStyle.Render("[ Custom ]")
+	} else {
+		customLabel = promptStyle.Render("[ Custom ]")
+	}
+
 	// Title
 	title := titleStyle.Render(":: Typing Test")
 
 	// Combine menubar elements
-	return fmt.Sprintf("%s    %s", statsLabel, title)
+	return fmt.Sprintf("%s  %s    %s", statsLabel, customLabel, title)
 }
 
 // renderStatsPanel renders the statistics panel
@@ -884,6 +1063,59 @@ func (m TypingTestModel) renderStatsPanel() string {
 
 	b.WriteString("\n\n")
 	b.WriteString(helpStyle.Render("enter/esc: close"))
+
+	return optionsBoxStyle.Render(b.String())
+}
+
+// renderCustomPanel renders the custom text management panel
+func (m TypingTestModel) renderCustomPanel() string {
+	var b strings.Builder
+
+	b.WriteString(optionsTitleStyle.Render(":: Custom Texts"))
+	b.WriteString("\n\n")
+
+	if m.inCustomTextInput {
+		b.WriteString(promptStyle.Render("Paste or type your custom text:"))
+		b.WriteString("\n\n")
+		inputDisplay := m.customTextInput
+		if inputDisplay == "" {
+			inputDisplay = "_"
+		}
+		// Truncate display if too long
+		if len(inputDisplay) > 60 {
+			inputDisplay = inputDisplay[:57] + "..."
+		}
+		b.WriteString(searchBoxStyle.Render(inputDisplay))
+		b.WriteString("\n\n")
+		b.WriteString(helpStyle.Render("enter: save • esc: cancel"))
+	} else {
+		if len(m.customTexts) == 0 {
+			b.WriteString(promptStyle.Render("No custom texts added yet."))
+			b.WriteString("\n\n")
+			b.WriteString(promptStyle.Render("Press 'a' to add a custom text."))
+		} else {
+			b.WriteString(fmt.Sprintf("%s %d\n\n",
+				resultLabelStyle.Render("Custom texts:"),
+				len(m.customTexts)))
+
+			// Show preview of custom texts
+			for i, text := range m.customTexts {
+				preview := text
+				if len(preview) > 50 {
+					preview = preview[:47] + "..."
+				}
+				b.WriteString(fmt.Sprintf("%d. %s\n", i+1, promptStyle.Render(preview)))
+				if i >= 4 { // Show max 5 texts
+					if len(m.customTexts) > 5 {
+						b.WriteString(fmt.Sprintf("   ... and %d more\n", len(m.customTexts)-5))
+					}
+					break
+				}
+			}
+		}
+		b.WriteString("\n")
+		b.WriteString(helpStyle.Render("a: add text • d: delete last • esc: close"))
+	}
 
 	return optionsBoxStyle.Render(b.String())
 }

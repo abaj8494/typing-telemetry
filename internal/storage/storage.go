@@ -468,10 +468,11 @@ const (
 	SettingInertiaThreshold = "inertia_threshold"
 	SettingInertiaAccelRate = "inertia_accel_rate"
 	// Typing test settings
-	SettingTypingTestPB      = "typing_test_pb"
-	SettingTypingTestAvgWPM  = "typing_test_avg_wpm"
-	SettingTypingTestCount   = "typing_test_count"
-	SettingTypingTestTheme   = "typing_test_theme"
+	SettingTypingTestPB          = "typing_test_pb"
+	SettingTypingTestAvgWPM      = "typing_test_avg_wpm"
+	SettingTypingTestCount       = "typing_test_count"
+	SettingTypingTestTheme       = "typing_test_theme"
+	SettingTypingTestCustomTexts = "typing_test_custom_texts"
 )
 
 // Distance unit options
@@ -820,4 +821,15 @@ func (s *Store) GetTypingTestTheme() string {
 // SetTypingTestTheme saves the theme preference
 func (s *Store) SetTypingTestTheme(theme string) error {
 	return s.SetSetting(SettingTypingTestTheme, theme)
+}
+
+// GetTypingTestCustomTexts retrieves saved custom texts (newline-separated)
+func (s *Store) GetTypingTestCustomTexts() string {
+	val, _ := s.GetSetting(SettingTypingTestCustomTexts)
+	return val
+}
+
+// SetTypingTestCustomTexts saves custom texts (newline-separated)
+func (s *Store) SetTypingTestCustomTexts(texts string) error {
+	return s.SetSetting(SettingTypingTestCustomTexts, texts)
 }
