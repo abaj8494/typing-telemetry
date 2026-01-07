@@ -1,6 +1,7 @@
 cask "typtel" do
-  version "1.0.1"
-  sha256 "f71bdcd7cc3ba90634d07641e8781305550c918f574895b412ead8452186c5b3"
+  version "1.0.2"
+  # TODO: Update sha256 after creating GitHub release with Typtel-1.0.2.zip
+  sha256 :no_check
 
   url "https://github.com/abaj8494/homebrew-typing-telemetry/releases/download/v#{version}/Typtel-#{version}.zip"
   name "Typtel"
