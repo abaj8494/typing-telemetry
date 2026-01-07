@@ -10,29 +10,13 @@ import (
 )
 
 var (
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("205")).
-			MarginBottom(1)
-
-	statLabelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
-
-	statValueStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("86"))
-
-	boxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")).
-			Padding(1, 2)
-
-	graphStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205"))
-
-	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")).
-			MarginTop(1)
+	// Main TUI styles - initialized by themes.go
+	titleStyle     lipgloss.Style
+	statLabelStyle lipgloss.Style
+	statValueStyle lipgloss.Style
+	boxStyle       lipgloss.Style
+	graphStyle     lipgloss.Style
+	helpStyle      lipgloss.Style
 )
 
 type Model struct {

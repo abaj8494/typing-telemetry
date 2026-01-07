@@ -15,73 +15,23 @@ import (
 )
 
 var (
-	// Typing test styles
-	promptStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
-
-	correctStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("86"))
-
-	incorrectStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")).
-			Underline(true)
-
-	cursorStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("205")).
-			Foreground(lipgloss.Color("0"))
-
-	remainingStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("245"))
-
-	statsBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("86")).
-			Padding(1, 3).
-			MarginTop(2)
-
-	resultTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("205")).
-				MarginBottom(1)
-
-	resultValueStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("86"))
-
-	resultLabelStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("241"))
-
-	// Options menu styles
-	optionsTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("205")).
-				MarginBottom(1)
-
-	optionsBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("99")).
-			Padding(1, 2)
-
-	selectedOptionStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("86")).
-				Background(lipgloss.Color("236"))
-
-	unselectedOptionStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("245"))
-
-	searchBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("205")).
-			Padding(0, 1).
-			MarginBottom(1)
-
-	valueStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("99"))
-
-	paceCaretStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("99")).
-			Foreground(lipgloss.Color("0"))
+	// Typing test styles - initialized by themes.go
+	promptStyle           lipgloss.Style
+	correctStyle          lipgloss.Style
+	incorrectStyle        lipgloss.Style
+	cursorStyle           lipgloss.Style
+	remainingStyle        lipgloss.Style
+	statsBoxStyle         lipgloss.Style
+	resultTitleStyle      lipgloss.Style
+	resultValueStyle      lipgloss.Style
+	resultLabelStyle      lipgloss.Style
+	optionsTitleStyle     lipgloss.Style
+	optionsBoxStyle       lipgloss.Style
+	selectedOptionStyle   lipgloss.Style
+	unselectedOptionStyle lipgloss.Style
+	searchBoxStyle        lipgloss.Style
+	valueStyle            lipgloss.Style
+	paceCaretStyle        lipgloss.Style
 )
 
 // Default word lists for typing tests
@@ -145,6 +95,7 @@ type TestOptions struct {
 	Punctuation   bool          // Include sentence-style punctuation and capitalization
 	PaceCaret     PaceCaretMode // Pace caret mode
 	CustomPaceWPM float64       // Custom pace WPM target
+	Theme         string        // Color theme
 }
 
 // Option represents a single option in the menu
@@ -195,9 +146,18 @@ func NewTypingTest(sourceFile string, wordCount int) TypingTestModel {
 		Punctuation:   false,
 		PaceCaret:     PaceOff,
 		CustomPaceWPM: 60.0,
+		Theme:         "default",
 	}
 
 	allOptions := []Option{
+		{
+			ID:          "theme",
+			Name:        "Theme",
+			Description: "Color scheme",
+			Type:        "choice",
+			Choices:     ThemeNames,
+			Value:       "default",
+		},
 		{
 			ID:          "layout",
 			Name:        "Layout",
@@ -373,6 +333,28 @@ func (m *TypingTestModel) transformLayout(text string) string {
 	return result.String()
 }
 
+// deleteLastWord removes the last word from the typed string
+// It deletes back to the previous space or the beginning of the string
+func deleteLastWord(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+
+	// Trim trailing spaces first
+	end := len(s)
+	for end > 0 && s[end-1] == ' ' {
+		end--
+	}
+
+	// Find the start of the last word
+	start := end
+	for start > 0 && s[start-1] != ' ' {
+		start--
+	}
+
+	return s[:start]
+}
+
 func (m *TypingTestModel) resetTest() {
 	m.targetText = m.generateText()
 	m.typed = ""
@@ -405,20 +387,25 @@ func (m *TypingTestModel) filterOptions() {
 
 func (m *TypingTestModel) applyOption(opt Option, choiceIdx int) {
 	switch opt.ID {
+	case "theme":
+		themeName := opt.Choices[choiceIdx]
+		m.options.Theme = themeName
+		m.allOptions[0].Value = themeName
+		SetTheme(themeName)
 	case "layout":
 		m.options.Layout = opt.Choices[choiceIdx]
-		m.allOptions[0].Value = opt.Choices[choiceIdx]
+		m.allOptions[1].Value = opt.Choices[choiceIdx]
 	case "live_wpm":
 		m.options.LiveWPM = !m.options.LiveWPM
-		m.allOptions[1].Value = m.options.LiveWPM
+		m.allOptions[2].Value = m.options.LiveWPM
 	case "test_length":
 		count, _ := strconv.Atoi(opt.Choices[choiceIdx])
 		m.options.WordCount = count
 		m.wordCount = count
-		m.allOptions[2].Value = opt.Choices[choiceIdx]
+		m.allOptions[3].Value = opt.Choices[choiceIdx]
 	case "punctuation":
 		m.options.Punctuation = !m.options.Punctuation
-		m.allOptions[3].Value = m.options.Punctuation
+		m.allOptions[4].Value = m.options.Punctuation
 	case "pace_caret":
 		switch opt.Choices[choiceIdx] {
 		case "off":
@@ -433,7 +420,7 @@ func (m *TypingTestModel) applyOption(opt Option, choiceIdx int) {
 			m.inCustomWPMInput = true
 			m.customWPMInput = fmt.Sprintf("%.0f", m.options.CustomPaceWPM)
 		}
-		m.allOptions[4].Value = opt.Choices[choiceIdx]
+		m.allOptions[5].Value = opt.Choices[choiceIdx]
 	}
 }
 
@@ -469,7 +456,13 @@ func (m TypingTestModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyBackspace:
 			if len(m.typed) > 0 && m.state == StateRunning {
-				m.typed = m.typed[:len(m.typed)-1]
+				if msg.Alt {
+					// Alt+Backspace: delete the previous word
+					m.typed = deleteLastWord(m.typed)
+				} else {
+					// Regular backspace: delete one character
+					m.typed = m.typed[:len(m.typed)-1]
+				}
 			}
 			return m, nil
 
@@ -651,7 +644,7 @@ func (m TypingTestModel) updateOptions(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m TypingTestModel) View() string {
 	if m.state == StateOptions {
-		return m.renderOptions()
+		return m.centerContent(m.renderOptions())
 	}
 
 	var b strings.Builder
@@ -713,7 +706,7 @@ func (m TypingTestModel) View() string {
 
 	// Show current options summary
 	b.WriteString("\n")
-	opts := fmt.Sprintf("layout: %s • words: %d", m.options.Layout, m.options.WordCount)
+	opts := fmt.Sprintf("theme: %s • layout: %s • words: %d", m.options.Theme, m.options.Layout, m.options.WordCount)
 	if m.options.Punctuation {
 		opts += " • punct"
 	}
@@ -729,7 +722,53 @@ func (m TypingTestModel) View() string {
 	}
 	b.WriteString(promptStyle.Render(opts))
 
-	return b.String()
+	return m.centerContent(b.String())
+}
+
+// centerContent centers the content both horizontally and vertically
+func (m TypingTestModel) centerContent(content string) string {
+	if m.width == 0 || m.height == 0 {
+		return content
+	}
+
+	lines := strings.Split(content, "\n")
+
+	// Calculate max visible width of content (strip ANSI codes for width calculation)
+	maxWidth := 0
+	for _, line := range lines {
+		// Strip ANSI escape codes for width calculation
+		visibleLen := lipgloss.Width(line)
+		if visibleLen > maxWidth {
+			maxWidth = visibleLen
+		}
+	}
+
+	// Calculate horizontal padding
+	hPadding := (m.width - maxWidth) / 2
+	if hPadding < 0 {
+		hPadding = 0
+	}
+
+	// Add horizontal padding to each line
+	paddedLines := make([]string, len(lines))
+	for i, line := range lines {
+		paddedLines[i] = strings.Repeat(" ", hPadding) + line
+	}
+
+	// Calculate vertical padding
+	vPadding := (m.height - len(lines)) / 2
+	if vPadding < 0 {
+		vPadding = 0
+	}
+
+	// Add vertical padding
+	var result strings.Builder
+	for i := 0; i < vPadding; i++ {
+		result.WriteString("\n")
+	}
+	result.WriteString(strings.Join(paddedLines, "\n"))
+
+	return result.String()
 }
 
 func (m TypingTestModel) renderOptions() string {
