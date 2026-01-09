@@ -1,11 +1,11 @@
 class TypingTelemetry < Formula
   desc "Keystroke and mouse telemetry for developers - track your daily typing and mouse movement"
   homepage "https://github.com/abaj8494/typing-telemetry"
-  version "1.1.5"
+  version "1.1.7"
   license "MIT"
 
   # Install from GitHub repository
-  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v1.1.5"
+  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v1.1.7"
   head "https://github.com/abaj8494/typing-telemetry.git", branch: "main"
 
   depends_on :macos
@@ -98,6 +98,7 @@ class TypingTelemetry < Formula
         typtel stats     - Show statistics
         typtel today     - Today's keystroke count
         typtel test      - Typing speed test
+        typtel v         - View charts in browser
     EOS
   end
 
