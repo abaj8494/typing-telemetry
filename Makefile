@@ -2,9 +2,8 @@
 
 BINARY_NAME=typtel
 MENUBAR_NAME=typtel-menubar
-DAEMON_NAME=typtel-daemon
 APP_NAME=Typtel.app
-VERSION?=1.1.4
+VERSION?=1.1.5
 BUILD_DIR=build
 PREFIX?=/usr/local
 
@@ -17,7 +16,7 @@ deps:
 	go mod tidy
 	go mod download
 
-build: build-cli build-menubar build-daemon
+build: build-cli build-menubar
 
 build-cli:
 	@echo "Building CLI..."
@@ -29,17 +28,11 @@ build-menubar:
 	@mkdir -p $(BUILD_DIR)
 	CGO_ENABLED=1 go build $(LDFLAGS) -o $(BUILD_DIR)/$(MENUBAR_NAME) ./cmd/typtel-menubar
 
-build-daemon:
-	@echo "Building daemon..."
-	@mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=1 go build $(LDFLAGS) -o $(BUILD_DIR)/$(DAEMON_NAME) ./cmd/daemon
-
 install: build
 	@echo "Installing to $(PREFIX)/bin..."
 	@mkdir -p $(PREFIX)/bin
 	@cp $(BUILD_DIR)/$(BINARY_NAME) $(PREFIX)/bin/
 	@cp $(BUILD_DIR)/$(MENUBAR_NAME) $(PREFIX)/bin/
-	@cp $(BUILD_DIR)/$(DAEMON_NAME) $(PREFIX)/bin/
 	@echo "Installing LaunchAgent..."
 	@mkdir -p ~/Library/LaunchAgents
 	@sed 's|BINARY_PATH|$(PREFIX)/bin/$(MENUBAR_NAME)|g' scripts/com.typtel.menubar.plist > ~/Library/LaunchAgents/com.typtel.menubar.plist
@@ -65,7 +58,6 @@ uninstall:
 	@rm -f ~/Library/LaunchAgents/com.typtel.menubar.plist
 	@rm -f $(PREFIX)/bin/$(BINARY_NAME)
 	@rm -f $(PREFIX)/bin/$(MENUBAR_NAME)
-	@rm -f $(PREFIX)/bin/$(DAEMON_NAME)
 	@echo "Done!"
 
 clean:
@@ -76,15 +68,26 @@ clean:
 test:
 	go test -v ./...
 
+test-coverage:
+	go test -v -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+# Update word lists from external sources
+update-wordlists:
+	@echo "Updating word lists..."
+	@mkdir -p internal/tui/wordlists
+	@curl -sL "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt" -o internal/tui/wordlists/english_common.txt
+	@curl -sL "https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt" | awk '{print $$2}' > internal/tui/wordlists/eff_words.txt
+	@echo "Word lists updated successfully!"
+	@wc -l internal/tui/wordlists/*.txt
+
 # Development helpers
 run-cli: build-cli
 	./$(BUILD_DIR)/$(BINARY_NAME)
 
 run-menubar: build-menubar
 	./$(BUILD_DIR)/$(MENUBAR_NAME)
-
-run-daemon: build-daemon
-	./$(BUILD_DIR)/$(DAEMON_NAME)
 
 # Build macOS .app bundle (openable from Finder/Spotlight)
 app: build-menubar

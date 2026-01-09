@@ -26,10 +26,9 @@ static int createInertiaEventTap() {
         return 1; // Already created
     }
 
-    // Listen for keyDown, keyUp, and flagsChanged (for shift)
+    // Listen for keyDown and keyUp events
     CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) |
-                            CGEventMaskBit(kCGEventKeyUp) |
-                            CGEventMaskBit(kCGEventFlagsChanged);
+                            CGEventMaskBit(kCGEventKeyUp);
 
     // Use kCGEventTapOptionDefault to allow event modification/suppression
     inertiaEventTap = CGEventTapCreate(
@@ -90,11 +89,6 @@ static bool isAutorepeatEvent(CGEventRef event) {
 // Get keycode from event
 static int getKeycode(CGEventRef event) {
     return (int)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-}
-
-// Get event flags (for modifier keys)
-static uint64_t getEventFlags(CGEventRef event) {
-    return CGEventGetFlags(event);
 }
 
 // Check accessibility
@@ -197,8 +191,6 @@ var (
 	config         Config
 	running        bool
 	keyStates      = make(map[int]*keyState)  // keycode -> state
-	lastShiftTap   time.Time
-	shiftTapCount  int
 )
 
 // Global reference to prevent GC
@@ -429,15 +421,6 @@ func stopKeyRepeat(keycode int) {
 	debugLog("STOP_KEY keycode=%d lastStopTime=%v", keycode, state.lastStopTime)
 }
 
-// resetAllAcceleration resets all key acceleration (for double-tap shift)
-func resetAllAcceleration() {
-	mu.Lock()
-	defer mu.Unlock()
-
-	for _, state := range keyStates {
-		state.keyCount = 0
-	}
-}
 
 // stopOtherKeys stops inertia for all keys except the specified one
 // This is called when a new key is pressed to prevent inertia buildup
@@ -463,33 +446,6 @@ func stopOtherKeys(exceptKeycode int) {
 	}
 }
 
-// handleShiftTap checks for double-tap shift and resets acceleration
-func handleShiftTap() {
-	now := time.Now()
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	if now.Sub(lastShiftTap) < 300*time.Millisecond {
-		shiftTapCount++
-		if shiftTapCount >= 2 {
-			// Double-tap detected - reset all acceleration
-			for _, state := range keyStates {
-				state.keyCount = 0
-			}
-			shiftTapCount = 0
-		}
-	} else {
-		shiftTapCount = 1
-	}
-	lastShiftTap = now
-}
-
-// Shift keycodes (left=56, right=60)
-const (
-	leftShiftKeycode  = 56
-	rightShiftKeycode = 60
-)
 
 //export goInertiaEventCallback
 func goInertiaEventCallback(proxy C.CGEventTapProxy, eventType C.CGEventType, event C.CGEventRef, refcon unsafe.Pointer) C.CGEventRef {
@@ -543,17 +499,6 @@ func goInertiaEventCallback(proxy C.CGEventTapProxy, eventType C.CGEventType, ev
 	case C.kCGEventKeyUp:
 		debugLog("EVENT_KEYUP keycode=%d", keycode)
 		stopKeyRepeat(keycode)
-
-	case C.kCGEventFlagsChanged:
-		// Check for shift key taps
-		flags := uint64(C.getEventFlags(event))
-		isShiftDown := (flags & uint64(C.kCGEventFlagMaskShift)) != 0
-
-		if !isShiftDown && (keycode == leftShiftKeycode || keycode == rightShiftKeycode) {
-			// Shift was released - count as a tap
-			debugLog("SHIFT_TAP keycode=%d", keycode)
-			handleShiftTap()
-		}
 	}
 
 	return event

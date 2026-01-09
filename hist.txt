@@ -1,0 +1,579 @@
+commit 844b8f27ed0ac5c046c3c7413b39d6d9686dcae3
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 15:48:52 2026 +1100
+
+    chore: update cask and formula to v1.1.3
+
+commit 7bb6888f564140d2a78abd946f19a79dcd65bae1
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 15:45:45 2026 +1100
+
+    feat: accurate mouse distance using display PPI (v1.1.3)
+    
+    - Query all displays for actual PPI instead of hardcoded 100 DPI
+    - Calculate average PPI across connected monitors
+    - Fallback to 100 DPI if displays don't report physical dimensions
+    - Add debug menu option: Settings > Debug > Show Display Info
+
+commit c7c8b987497ffb5bbfa0ebf43e1f38fca66554fc
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 14:48:27 2026 +1100
+
+    chore: update cask and formula to v1.1.2
+
+commit e0abe48e6b859450bdff5948887385d6f2183208
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 14:46:25 2026 +1100
+
+    feat: persistent stats, auto-save, custom texts (v1.1.2)
+    
+    - Typing test stats now persist to database
+    - Test results auto-save immediately on completion
+    - Add "Test Type" option (normal/custom)
+    - Add [ Custom ] menu tab for managing custom texts
+    - Add left/right navigation for menubar tabs
+
+commit 235a334e60cf8a790bc3f07f2918f3e48c1d3f02
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 14:35:16 2026 +1100
+
+    docs: add screenshots to README
+
+commit ecd24891780ca40405780dcc7ac63e0ac04dca88
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 14:31:05 2026 +1100
+
+    chore: update cask and formula to v1.1.1
+
+commit 95b08d30ad2a59a01b632c18c52a3e5201f2126a
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 14:22:42 2026 +1100
+
+    fix: menubar, typing test UI, stats, and add typing test shortcut (v1.1.1)
+    
+    - View Charts now opens directly instead of showing submenu
+    - Fix bottom border disappearing during typing test
+    - Fix stats discrepancy: CLI now uses actual word count instead of keystrokes/5
+    - Add 't' shortcut in main TUI to launch typing test
+
+commit a77fef279b22333b546c8800d8ecec7fc3527749
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 13:58:44 2026 +1100
+
+    chore: update cask and formula to v1.1.0
+
+commit 6fc440070e5da8f7fda0da365bd0c90c8ce1aa30
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 13:42:05 2026 +1100
+
+    feat: typing test improvements and inertia fix (v1.1.0)
+    
+    Typing test improvements:
+    - Icon now persists across app upgrades and installs
+    - All meta-options (menubar, help text) hidden during active typing
+    - Test completes immediately when last character is typed correctly
+    - Tab-restarted tests after completion count towards statistics
+    - Added mode-specific statistics storage (by word count and punctuation)
+    
+    Inertia fix:
+    - Typing a different character now resets inertia of any held key
+    - Prevents "swarm of characters" issue when switching keys while holding
+
+commit 5a1853a37a700a84d8ecdf5ae23af2e539d7dfb5
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 13:26:14 2026 +1100
+
+    chore: update cask to v1.0.3
+
+commit 3ba58b6182aef1fb45d36eb2ffa2e833627a943b
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 13:08:07 2026 +1100
+
+    feat: major typing test UX improvements (v1.0.3)
+    
+    - Extra typed characters now push remaining text along horizontally
+    - Words are never truncated at screen edge (proper word wrapping)
+    - Punctuation mode enabled by default
+    - Added visual box around typing test area
+    - Added top menubar with Stats button (navigate with up arrow)
+    - Store and persist test statistics (PB, average WPM, test count)
+    - Hide extraneous UI elements when typing starts
+    - Show average pace and personal best before test begins
+    - Replace emoji with unicode characters throughout
+
+commit ea6cb45d7fd6720881f47f4163b5aa34495e6c2c
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 12:43:35 2026 +1100
+
+    chore: update cask sha256 for v1.0.2
+
+commit 275a345db282f0ee75a459f40214c3217d0d9455
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 12:40:20 2026 +1100
+
+    chore: bump cask version to v1.0.2
+
+commit 44a35433fb94d656eea636c3b7a06fb24cc09da4
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Jan 7 12:39:37 2026 +1100
+
+    feat: improve typing test UX with themes and centering (v1.0.2)
+    
+    - Add Alt+Backspace to delete entire word while typing
+    - Center typing test UI in terminal (both horizontally and vertically)
+    - Add theme system with new burgundy red default accent (#C73B3C)
+    - Add gruvbox, tokyonight, and catppuccin theme options
+    - Theme selection available in options menu (Esc key)
+
+commit 6a671b0e633a27b19fcbab0a5ccaf037b2b64296
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Tue Jan 6 21:10:11 2026 +1100
+
+    feat: adjust inertia threshold defaults (+50ms), add 250ms option (v1.0.1)
+
+commit 9009e127c8a76f1b0b1733c1c701f4f97ea5dba8
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Tue Jan 6 20:45:26 2026 +1100
+
+    docs: add note about re-granting accessibility after upgrades
+
+commit 974d4eccaf1fbdc7b101eabf5a8ac107a27da652
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Tue Jan 6 19:25:31 2026 +1100
+
+    Fix cask sha256 checksum for v1.0.0
+
+commit 4da1d61778e6e6d76823e368da21450ce3d4c9dc
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Tue Jan 6 19:19:45 2026 +1100
+
+    feat: v1.0.0 - inertia improvements and unified charts
+    
+    Inertia system improvements:
+    - Fix race condition causing keys to continue after release
+    - Add Ultra Fast (140/s) and Slow (20/s) speed options
+    - Add 0.25x acceleration rate option
+    - Remove "infinite" speed (capped at terminal-safe rates)
+    
+    Charts improvements:
+    - Unified weekly/monthly view with dropdown selector
+    - Add distance unit selector (feet/cars/frisbee fields)
+    - Interactive chart updates without page reload
+    
+    UI changes:
+    - Rename "Mouse Tracking" to "Mouse Distance"
+    - Simplified chart menu (single "Open Charts" option)
+
+commit 34c29e5ea0b4507f1d54f68a963bc23c5c34c427
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Tue Jan 6 18:05:59 2026 +1100
+
+    feat: add inertia system with accelerating key repeat (v0.10.0)
+    
+    - Add internal/inertia package with CGO macOS key event interception
+    - Implement accelerating key repeat based on accelerated-jk.nvim algorithm
+    - Add inertia settings menu: enable/disable, max speed, threshold, accel rate
+    - Double-tap shift resets acceleration to base speed
+    - Update README with cask install instructions and inertia documentation
+
+commit 214e995e80d1b62175c244e94285fd0ae2f76745
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 21:24:19 2026 +1100
+
+    Fix cask sha256 checksum
+
+commit 139b39d9714b3c952305177adbfd517b49b8abb1
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 21:15:28 2026 +1100
+
+    Auto-remove quarantine on cask install (fixes 'app is damaged' error)
+
+commit 060443f5049ef2cb3af4d64da6957fe9e3a1c6ed
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 21:12:43 2026 +1100
+
+    Fix cask URL and add sha256 checksum
+
+commit 6e0e7afa33754a6238f25da59ed766030abbd999
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 21:06:39 2026 +1100
+
+    Add Homebrew Cask for proper /Applications install (v0.9.0)
+    
+    - Add GitHub Actions workflow to build and release .app bundle
+    - Add Cask formula that installs to /Applications
+    - Update Formula to recommend cask installation
+    - Use __VERSION__ placeholder in Info.plist for build-time substitution
+    
+    Install with: brew install --cask typtel
+
+commit bded34b77cf48686b509dc4377e220d76071ac5f
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 21:00:35 2026 +1100
+
+    Install Typtel.app to /Applications like a proper macOS app (v0.8.9)
+    
+    - post_install copies app bundle to /Applications
+    - Service runs from /Applications/Typtel.app
+    - Accessibility permission persists across upgrades
+    - Launchable from Spotlight like WordCounter.app
+
+commit 5cca6d967b7811ba3beeda01573007460a5c71f8
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:51:56 2026 +1100
+
+    Service runs opt_bin, clearer permission instructions (v0.8.8)
+    
+    - Service now runs opt_bin/typtel-menubar directly
+    - Terminal works because kitty has accessibility (child processes inherit)
+    - Service needs direct binary permission since no parent terminal
+    - Updated caveats: must re-grant permissions after each upgrade
+    - Spotlight access is now optional/secondary
+
+commit 939d17eb4b83eed0bda22d423fe57f5e8a79a66e
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:44:50 2026 +1100
+
+    Fix charts format order, copy binary to app bundle (v0.8.7)
+    
+    - Fix charts.html: unitLabel was in wrong position in fmt.Sprintf args
+    - Revert app bundle binary to copy (not symlink) for proper macOS permissions
+    - Symlinks don't work well with accessibility permissions
+    - Bump version to 0.8.7
+
+commit 565db1187fb1e4c091a265290ea9d729521ec964
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:39:26 2026 +1100
+
+    Remove post_install, add manual symlink command in caveats (v0.8.6)
+    
+    - Homebrew sandbox blocks ALL user directory writes in post_install
+    - Removed post_install entirely
+    - Added manual ln -sf command in caveats for first-time setup
+    - Bump version to 0.8.6
+
+commit b19c2bff7f53ea38950189e2a5fc8f997d614d2d
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:37:21 2026 +1100
+
+    Fix post_install: use shell commands for quarantined directories (v0.8.5)
+    
+    - Ruby's unlink fails on ~/Applications due to macOS quarantine attributes
+    - Use shell rm/ln commands which work in sandboxed Homebrew context
+    - Bump version to 0.8.5
+
+commit 8e2e85bafbb81b5d39127a5ff4884a484b26c4c1
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:34:15 2026 +1100
+
+    App bundle uses symlink for shared permissions (v0.8.4)
+    
+    - App bundle binary is now symlink to bin/typtel-menubar
+    - This means Typtel.app and brew service share the same permissions
+    - User can add ~/Applications/Typtel.app to Accessibility
+    - Spotlight launch works to restart menubar if needed
+    - Service runs from app bundle path
+    - Bump version to 0.8.4
+
+commit e4971aef6ae5ebc6c26b9c22e20da97763174c80
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:30:48 2026 +1100
+
+    Fix brew service to use same binary as manual run (v0.8.3)
+    
+    - Service now runs /opt/homebrew/bin/typtel-menubar instead of app bundle
+    - This allows accessibility permissions to persist (same binary path)
+    - Updated caveats with correct permission path
+    - Bump version to 0.8.3
+
+commit 62c8461b03058b807acccb056d20243cd854bae7
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:23:31 2026 +1100
+
+    Fix charts to use dynamic distance units (v0.8.2)
+    
+    - Charts now display mouse distance in selected unit (feet/cars/fields)
+    - Chart title dynamically shows the current unit
+    - Bump version to 0.8.2
+
+commit 52e213019bbc46df08a833957b85d5267ae3fba0
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 20:06:12 2026 +1100
+
+    Add distance unit options: Cars and Frisbee Fields (v0.8.1)
+    
+    - Add distance unit setting (feet/miles, cars, frisbee fields)
+    - Cars = 15ft each, Frisbee fields = 330ft (Ultimate field length)
+    - Distance Unit submenu in Settings for easy switching
+    - Clarify "Daily Average" label to "Avg Keystrokes/Day" in charts
+    - Bump version to 0.8.1
+
+commit cfdb670be37d69b3501a2fd838fcc263e8fa7cba
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 19:20:45 2026 +1100
+
+    Upgrade to v0.8.0 with app icon, mouse tracking toggle, and brew fixes
+    
+    - Add app icon (keyboard-themed) for Finder/Spotlight visibility
+    - Add mouse tracking toggle in Settings menu (requires restart)
+    - Fix brew formula to force-recreate ~/Applications symlink on upgrade
+    - Rewrite README for brew-only installation workflow
+    - Remove local binaries from repo
+
+commit febb49a0aeacdf4fe563ef648b15b8821a5fafb1
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 18:44:22 2026 +1100
+
+    Upgrade to v0.7.0 with mouse clicks, settings menu, and app bundle
+    
+    - Add mouse click tracking with click count displayed in menu and charts
+    - Add Settings menu to configure menu bar display (keystrokes, words, clicks, distance)
+    - Create .app bundle for easier macOS accessibility permissions
+    - Change distance units from meters to feet for US users
+    - Add Info.plist and LaunchAgent templates for app bundle
+    - Improve Homebrew formula caveats with clearer setup instructions
+
+commit 7a3979a2044efe2a1fe3033f57eba799720724e6
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 17:07:08 2026 +1100
+
+    Upgrade to v0.6.0 with mouse movement tracking
+    
+    - Update version to 0.6.0
+    - Update Homebrew formula with new description and features
+    - Add mouse tracking to caveats documentation
+
+commit 6fab1425dbfd6c2c76c79a38813abf584ef4c80b
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Mon Jan 5 16:59:25 2026 +1100
+
+    feat: add mouse movement tracking with stillness leaderboard
+    
+    - Add new mousetracker module using CGEventTap (same accessibility permissions)
+    - Track total Euclidean distance traveled from midnight position
+    - Calculate Mean Absolute Error (MAE) from daily origin
+    - Store mouse stats in SQLite (mouse_daily table)
+    - Display mouse distance in menu bar (⌨️ keys | words | 🖱️distance)
+    - Add mouse distance chart to stats HTML view
+    - Implement "Stillness Leaderboard" for days with least mouse movement
+    - Convert pixel distance to real-world units (cm/m/km at ~100 DPI)
+
+commit 4facb4449aa161da981705f59bdba5314dce9e6f
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Dec 31 10:46:45 2025 +1100
+
+    rel: brew v0.5.0
+
+commit 9c1b33ba8896db3b989acefe1f9ac50b5c25ea88
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Wed Dec 31 09:42:10 2025 +1100
+
+    Upgrade to v0.5.0 with improved typing test and UX fixes
+    
+    - Fix custom pace caret to accept WPM arguments via input dialog
+    - Add newline at end of `typtel today` output
+    - Add quit confirmation dialog with options to hide menu bar or stop tracking
+    - Collapse uppercase into punctuation mode with proper sentence-style capitalization
+    - Add Emacs keybinds to options menu (C-n, C-p, C-g for navigation/cancel)
+    - Improve punctuation generation with grammatically sensible patterns
+    - Fix .gitignore to not ignore source directories
+
+commit 80084dac9788504fa497f98e421c99f90f6f6a06
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Tue Dec 30 12:35:24 2025 +1100
+
+    Upgrade to v0.4.0 with Monkeytype-style typing test options
+    
+    - Add Tab key to reset typing test
+    - Add Escape key to open options menu (no longer quits)
+    - Add options menu with fuzzy search:
+      - Layout emulation (QWERTY, Dvorak, Colemak)
+      - Live WPM toggle
+      - Test length (10, 25, 50, 100, 200 words)
+      - Uppercase letters toggle
+      - Punctuation marks toggle
+      - Pace caret (off, PB, average, custom WPM)
+    - Add About menu item with version and GitHub link
+    - Remove legacy menubar code
+    - Update README with typing test documentation
+    - Update Homebrew formula for v0.4.0
+
+commit 3b619a494c17dc9bb02c0c566d93c9722b19488d
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Sun Dec 28 09:59:01 2025 +1100
+
+    Upgrade to v0.3.0 with robust word counting and absolute numbers
+    
+    - Track actual words by detecting word boundaries (space, return, tab)
+    - Display absolute numbers with comma separators instead of rounding (12,345 vs 12K)
+    - Update charts to show actual word counts instead of estimations
+
+commit f1eef11d141e350dc494b5637d5869f636753c14
+Author: Aayush Bajaj <33042478+abaj8494@users.noreply.github.com>
+Date:   Sat Dec 27 12:32:58 2025 +1100
+
+    Update Homebrew tap and install commands
+
+commit 90b529ef62928a82a28932b7a1233feafbd3522f
+Author: Aayush Bajaj <33042478+abaj8494@users.noreply.github.com>
+Date:   Sat Dec 27 12:29:28 2025 +1100
+
+    Update homepage and repository URLs for TypingTelemetry
+
+commit 6dcfcd648575bfcec1b048d701d6b67babba7ff7
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Sat Dec 27 12:17:10 2025 +1100
+
+    Update README with Homebrew instructions and typing test
+    
+    - Add brew tap/install/services commands
+    - Document typing test feature (typtel test)
+    - Update LaunchAgent section for brew services
+
+commit 1e48f3de30596e6b4094ad08d9134e673d839a33
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Sat Dec 27 12:13:56 2025 +1100
+
+    Upgrade to v0.2.0 with improved Homebrew support
+    
+    - Rename formula to typing-telemetry.rb for brew tap compatibility
+    - Use Homebrew's native service block for LaunchAgent management
+    - Update version to 0.2.0 in Makefile
+    - Use GitHub URL for formula source instead of local path
+    - Improve caveats with brew services commands
+    
+    Users can now install with:
+      brew tap aayushbajaj/typing-telemetry
+      brew install typing-telemetry
+      brew services start typing-telemetry
+
+commit 75dc1a79897c675dd12c1d7880c5f56f07fb0d16
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Sat Dec 27 12:13:02 2025 +1100
+
+    Show decimal in menubar keypress count (3.1K instead of 3K)
+    
+    Changed formatCompact to use %.1fK formatting for more precision in
+    the menubar display, matching the formatNumber function used in menus.
+
+commit 61137735e5538cefa95223a86b8afc75b1342c23
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 23:09:37 2025 +1100
+
+    Add LimitLoadToSessionType: Aqua for GUI session access
+    
+    LaunchAgent now only loads in GUI sessions which should provide
+    proper WindowServer access for menubar apps.
+
+commit e66080313f5e69fa5ecd50af65c086b695d94bac
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 22:55:15 2025 +1100
+
+    Simplify: remove .app bundle, use binary directly
+    
+    The HOME fix in code makes the .app bundle unnecessary.
+    Now just installs binary to /usr/local/bin and runs via launchctl.
+
+commit a73ebf85dff6f7d46d836b7a237c0b31f178790d
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 22:50:58 2025 +1100
+
+    Fix HOME environment variable issue for launchctl
+    
+    When launched via launchctl/open, HOME isn't set. Now using
+    user.Current() as fallback to get the home directory.
+
+commit 4ef4d43a2c1423bcf91a45ac50f0b37973fe236f
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 22:44:34 2025 +1100
+
+    Fix LaunchAgent: create proper .app bundle for menubar
+    
+    The LaunchAgent wasn't showing the menubar icon because launchctl
+    doesn't give processes proper WindowServer access.
+    
+    Changes:
+    - Create Typtel.app bundle with Info.plist (LSUIElement for menubar-only)
+    - Install to /Applications instead of /usr/local/bin
+    - Use `open -a` in LaunchAgent for proper GUI context
+    - Add `make app` target for bundle creation
+    - Update install/uninstall to handle app bundle
+    
+    Install flow:
+      sudo make install  # Installs to /Applications
+      make start         # Starts via launchctl
+
+commit 34a70d27d1c0a65151d307a04bff31ac29f05d5c
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 22:39:44 2025 +1100
+
+    Add typing test command and improve stats display
+    
+    Features:
+    - `typtel test` - Interactive TUI typing test
+      - Measures WPM and accuracy in real-time
+      - Supports custom word files (-f flag)
+      - Configurable word count (-w flag, default 25)
+      - Visual feedback: green=correct, red=incorrect
+      - Press Enter to restart after completion
+    
+    - `typtel stats` - Enhanced statistics display
+      - Shows word estimates (keystrokes/5 heuristic)
+      - Better formatting with unicode borders
+    
+    Usage:
+      typtel test                  # Default 25-word test
+      typtel test -w 50            # 50-word test
+      typtel test -f words.txt     # Custom word list
+
+commit cc822038a6c5b815998f6dcfe4475e6b1ee50d00
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 11:08:01 2025 +1100
+
+    Fix LaunchAgent: add HOME environment variable
+    
+    LaunchAgents don't have HOME set by default, causing
+    os.UserHomeDir() to fail. Now we explicitly set HOME
+    in the plist environment variables.
+
+commit 6a4cd0798acc442fc200ad210e5a87d6b4833c29
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 11:05:18 2025 +1100
+
+    Add start/stop targets to Makefile, clarify install instructions
+    
+    - Add 'make start' and 'make stop' for LaunchAgent control
+    - Clarify that launchctl should be run WITHOUT sudo
+
+commit 2a632df2d3e7dcac18e640221f35578e83469ef5
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 11:01:00 2025 +1100
+
+    Update .gitignore to exclude binaries
+
+commit 2076ee6eafc0dd875ac6251e542f0053bbc731b1
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 11:00:38 2025 +1100
+
+    Add word counting, charts, and heatmap visualization
+    
+    Features:
+    - Word count in menubar title (keystrokes/5 heuristic)
+    - Word counts displayed in menu dropdown
+    - "View Charts" submenu with weekly/monthly options
+    - Interactive HTML dashboard with:
+      - Bar chart for daily keystrokes
+      - Line chart for estimated words
+      - Activity heatmap showing hourly typing patterns
+    - Historical data retrieval (GetHistoricalStats, GetAllHourlyStatsForDays)
+
+commit 10176d643b0fddbb335d9079529994d73ef79202
+Author: Aayush Bajaj <aayushbajaj7@gmail.com>
+Date:   Fri Dec 26 10:58:01 2025 +1100
+
+    Initial commit: typtel menubar keystroke tracker
+    
+    - macOS menubar app for keystroke tracking
+    - SQLite storage for keystroke data
+    - TUI dashboard with BubbleTea
+    - Basic keystroke counting and display

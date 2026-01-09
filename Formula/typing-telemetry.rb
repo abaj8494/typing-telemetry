@@ -1,11 +1,11 @@
 class TypingTelemetry < Formula
   desc "Keystroke and mouse telemetry for developers - track your daily typing and mouse movement"
   homepage "https://github.com/abaj8494/typing-telemetry"
-  version "1.1.4"
+  version "1.1.5"
   license "MIT"
 
   # Install from GitHub repository
-  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v1.1.4"
+  url "https://github.com/abaj8494/typing-telemetry.git", tag: "v1.1.5"
   head "https://github.com/abaj8494/typing-telemetry.git", branch: "main"
 
   depends_on :macos
@@ -22,9 +22,6 @@ class TypingTelemetry < Formula
     # Build menu bar app (requires CGO for macOS frameworks)
     ENV["CGO_ENABLED"] = "1"
     system "go", "build", *std_go_args(ldflags: ldflags), "-o", bin/"typtel-menubar", "./cmd/typtel-menubar"
-
-    # Build daemon (requires CGO for macOS frameworks)
-    system "go", "build", *std_go_args(ldflags: ldflags), "-o", bin/"typtel-daemon", "./cmd/daemon"
 
     # Create .app bundle for accessibility permissions
     app_contents = prefix/"Typtel.app/Contents"

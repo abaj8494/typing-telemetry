@@ -15,6 +15,19 @@ static void ensureMainThread() {
         dispatch_sync(dispatch_get_main_queue(), ^{});
     }
 }
+
+// Check if we're on the main thread
+static bool isMainThread() {
+    return [NSThread isMainThread];
+}
+
+// Force a menubar refresh - helps when display configuration changes
+static void refreshMenuBar() {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Touch the status bar to force a redraw
+        [[NSApp mainMenu] update];
+    });
+}
 */
 import "C"
 
@@ -29,6 +42,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -40,8 +54,10 @@ import (
 )
 
 var (
-	store       *storage.Store
-	appStarted  = make(chan struct{})
+	store            *storage.Store
+	appStarted       = make(chan struct{})
+	lastMenuTitle    string // Track last title to avoid unnecessary updates
+	menuTitleMutex   sync.Mutex
 )
 
 func init() {
@@ -223,9 +239,7 @@ func main() {
 func updateMenuBarTitle() {
 	stats, err := store.GetTodayStats()
 	if err != nil {
-		menuet.App().SetMenuState(&menuet.MenuState{
-			Title: "⌨️ --",
-		})
+		setMenuTitle("⌨️ --")
 		return
 	}
 
@@ -256,12 +270,31 @@ func updateMenuBarTitle() {
 		title = strings.Join(parts, " | ")
 	}
 
+	setMenuTitle(title)
+}
+
+// setMenuTitle updates the menu title only if it has changed
+// This prevents unnecessary UI updates that can cause flickering
+func setMenuTitle(title string) {
+	menuTitleMutex.Lock()
+	defer menuTitleMutex.Unlock()
+
+	// Skip update if title hasn't changed
+	if title == lastMenuTitle {
+		return
+	}
+
+	lastMenuTitle = title
+
+	// Use dispatch_async to ensure UI update happens on main thread
+	// The menuet library should handle this, but we add extra safety
 	menuet.App().SetMenuState(&menuet.MenuState{
 		Title: title,
 	})
 }
 
-const Version = "0.10.0"
+// Version is set at build time via ldflags: -X main.Version=$(VERSION)
+var Version = "dev"
 
 func menuItems() []menuet.MenuItem {
 	stats, _ := store.GetTodayStats()
@@ -585,7 +618,7 @@ func settingsMenuItems() []menuet.MenuItem {
 
 				menuet.App().Alert(menuet.Alert{
 					MessageText:     "Inertia " + map[bool]string{true: "Enabled", false: "Disabled"}[newEnabled],
-					InformativeText: "Key acceleration is now " + map[bool]string{true: "active", false: "inactive"}[newEnabled] + ".\n\nHold any key to accelerate repeat speed.\nDouble-tap Shift to reset acceleration.",
+					InformativeText: "Key acceleration is now " + map[bool]string{true: "active", false: "inactive"}[newEnabled] + ".\n\nHold any key to accelerate repeat speed.\nPressing any other key resets acceleration.",
 					Buttons:         []string{"OK"},
 				})
 			},

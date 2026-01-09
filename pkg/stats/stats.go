@@ -50,10 +50,13 @@ func FormatKeystrokeCount(count int64) string {
 }
 
 func formatFloat(f float64) string {
-	if f == float64(int64(f)) {
-		return formatInt(int64(f))
+	intPart := int64(f)
+	if f == float64(intPart) {
+		return formatInt(intPart)
 	}
-	return string(rune(int('0'+int(f)))) + "." + string(rune(int('0'+int((f-float64(int(f)))*10))))
+	// Get first decimal digit
+	decimalPart := int((f - float64(intPart)) * 10)
+	return formatInt(intPart) + "." + string(byte('0'+decimalPart))
 }
 
 func formatInt(i int64) string {
