@@ -4,62 +4,62 @@ import "github.com/charmbracelet/lipgloss"
 
 // Theme defines a color scheme for the typing test
 type Theme struct {
-	Name             string
-	PrimaryAccent    string // Titles, cursor background
-	SecondaryAccent  string // Options box border, pace caret
-	CorrectText      string // Correctly typed text, selected options, values
-	ErrorText        string // Incorrectly typed text
-	LabelText        string // Labels, prompts, help text
-	RemainingText    string // Untyped text
-	Border           string // Stats box border
-	SelectedBg       string // Selected option background
+	Name            string
+	PrimaryAccent   string // Titles, cursor background
+	SecondaryAccent string // Options box border, pace caret
+	CorrectText     string // Correctly typed text, selected options, values
+	ErrorText       string // Incorrectly typed text
+	LabelText       string // Labels, prompts, help text
+	RemainingText   string // Untyped text
+	Border          string // Stats box border
+	SelectedBg      string // Selected option background
 }
 
 // Available themes
 var Themes = map[string]Theme{
 	"default": {
-		Name:             "Default",
-		PrimaryAccent:    "#C73B3C", // New burgundy red accent
-		SecondaryAccent:  "#C73B3C",
-		CorrectText:      "#5fafaf", // Teal/cyan
-		ErrorText:        "#ff5f5f", // Bright red
-		LabelText:        "#6c6c6c", // Gray
-		RemainingText:    "#8a8a8a", // Light gray
-		Border:           "#5f87d7", // Blue
-		SelectedBg:       "#303030", // Dark gray
+		Name:            "Default",
+		PrimaryAccent:   "#C73B3C", // New burgundy red accent
+		SecondaryAccent: "#C73B3C",
+		CorrectText:     "#5fafaf", // Teal/cyan
+		ErrorText:       "#ff5f5f", // Bright red
+		LabelText:       "#6c6c6c", // Gray
+		RemainingText:   "#8a8a8a", // Light gray
+		Border:          "#5f87d7", // Blue
+		SelectedBg:      "#303030", // Dark gray
 	},
 	"gruvbox": {
-		Name:             "Gruvbox",
-		PrimaryAccent:    "#d65d0e", // Gruvbox orange
-		SecondaryAccent:  "#b16286", // Gruvbox purple
-		CorrectText:      "#98971a", // Gruvbox green
-		ErrorText:        "#cc241d", // Gruvbox red
-		LabelText:        "#928374", // Gruvbox gray
-		RemainingText:    "#a89984", // Gruvbox light gray
-		Border:           "#458588", // Gruvbox aqua
-		SelectedBg:       "#3c3836", // Gruvbox bg1
+		Name:            "Gruvbox",
+		PrimaryAccent:   "#d65d0e", // Gruvbox orange
+		SecondaryAccent: "#b16286", // Gruvbox purple
+		CorrectText:     "#98971a", // Gruvbox green
+		ErrorText:       "#cc241d", // Gruvbox red
+		LabelText:       "#928374", // Gruvbox gray
+		RemainingText:   "#a89984", // Gruvbox light gray
+		Border:          "#458588", // Gruvbox aqua
+		SelectedBg:      "#3c3836", // Gruvbox bg1
 	},
 	"tokyonight": {
-		Name:             "Tokyo Night",
-		PrimaryAccent:    "#7aa2f7", // Tokyo Night blue
-		SecondaryAccent:  "#bb9af7", // Tokyo Night purple
-		CorrectText:      "#9ece6a", // Tokyo Night green
-		ErrorText:        "#f7768e", // Tokyo Night red
-		LabelText:        "#565f89", // Tokyo Night comment
-		RemainingText:    "#9aa5ce", // Tokyo Night foreground dim
-		Border:           "#7dcfff", // Tokyo Night cyan
-		SelectedBg:       "#292e42", // Tokyo Night bg highlight
+		Name:            "Tokyo Night",
+		PrimaryAccent:   "#7aa2f7", // Tokyo Night blue
+		SecondaryAccent: "#bb9af7", // Tokyo Night purple
+		CorrectText:     "#9ece6a", // Tokyo Night green
+		ErrorText:       "#f7768e", // Tokyo Night red
+		LabelText:       "#565f89", // Tokyo Night comment
+		RemainingText:   "#9aa5ce", // Tokyo Night foreground dim
+		Border:          "#7dcfff", // Tokyo Night cyan
+		SelectedBg:      "#292e42", // Tokyo Night bg highlight
 	},
 	"catppuccin": {
-		Name:             "Catppuccin",
-		PrimaryAccent:    "#cba6f7", // Catppuccin Mauve
-		SecondaryAccent:  "#f5c2e7", // Catppuccin Pink
-		CorrectText:      "#a6e3a1", // Catppuccin Green
-		ErrorText:        "#f38ba8", // Catppuccin Red
-		LabelText:        "#6c7086", // Catppuccin Overlay0
-		RemainingText:    "#9399b2", // Catppuccin Overlay2
-		Border:           "#89b4fa", // Catppuccin Blue
-		SelectedBg:       "#313244", // Catppuccin Surface0
+		Name:            "Catppuccin",
+		PrimaryAccent:   "#cba6f7", // Catppuccin Mauve
+		SecondaryAccent: "#f5c2e7", // Catppuccin Pink
+		CorrectText:     "#a6e3a1", // Catppuccin Green
+		ErrorText:       "#f38ba8", // Catppuccin Red
+		LabelText:       "#6c7086", // Catppuccin Overlay0
+		RemainingText:   "#9399b2", // Catppuccin Overlay2
+		Border:          "#89b4fa", // Catppuccin Blue
+		SelectedBg:      "#313244", // Catppuccin Surface0
 	},
 }
 

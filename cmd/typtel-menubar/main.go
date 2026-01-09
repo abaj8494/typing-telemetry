@@ -54,10 +54,10 @@ import (
 )
 
 var (
-	store            *storage.Store
-	appStarted       = make(chan struct{})
-	lastMenuTitle    string // Track last title to avoid unnecessary updates
-	menuTitleMutex   sync.Mutex
+	store          *storage.Store
+	appStarted     = make(chan struct{})
+	lastMenuTitle  string // Track last title to avoid unnecessary updates
+	menuTitleMutex sync.Mutex
 )
 
 func init() {
@@ -1394,7 +1394,7 @@ func generateChartsHTML() (string, error) {
                 totalWords: %d,
                 totalMouseFeet: %.2f,
                 days: 7,
-                heatmap: ` + "`%s`" + `
+                heatmap: `+"`%s`"+`
             },
             monthly: {
                 labels: [%s],
@@ -1405,7 +1405,7 @@ func generateChartsHTML() (string, error) {
                 totalWords: %d,
                 totalMouseFeet: %.2f,
                 days: 30,
-                heatmap: ` + "`%s`" + `
+                heatmap: `+"`%s`"+`
             }
         };
 

@@ -28,15 +28,15 @@ type HourlyStats struct {
 
 // MouseDailyStats represents mouse movement statistics for a day
 type MouseDailyStats struct {
-	Date           string
-	TotalDistance  float64 // Total Euclidean distance traveled in pixels
-	MidnightX      float64 // Mouse X position at midnight (or start of tracking)
-	MidnightY      float64 // Mouse Y position at midnight (or start of tracking)
-	CurrentX       float64 // Current mouse X position
-	CurrentY       float64 // Current mouse Y position
-	MAEFromOrigin  float64 // Mean Absolute Error from midnight position
-	MovementCount  int64   // Number of movement events recorded
-	ClickCount     int64   // Number of mouse clicks
+	Date          string
+	TotalDistance float64 // Total Euclidean distance traveled in pixels
+	MidnightX     float64 // Mouse X position at midnight (or start of tracking)
+	MidnightY     float64 // Mouse Y position at midnight (or start of tracking)
+	CurrentX      float64 // Current mouse X position
+	CurrentY      float64 // Current mouse Y position
+	MAEFromOrigin float64 // Mean Absolute Error from midnight position
+	MovementCount int64   // Number of movement events recorded
+	ClickCount    int64   // Number of mouse clicks
 }
 
 // MouseLeaderboardEntry represents a day in the "least mouse movement" leaderboard
@@ -521,8 +521,8 @@ func (s *Store) SetSetting(key, value string) error {
 // GetMenubarSettings returns the current menubar display settings
 func (s *Store) GetMenubarSettings() MenubarSettings {
 	settings := MenubarSettings{
-		ShowKeystrokes: true, // default on
-		ShowWords:      true, // default on
+		ShowKeystrokes: true,  // default on
+		ShowWords:      true,  // default on
 		ShowClicks:     false, // default off
 		ShowDistance:   false, // default off (per user request)
 	}

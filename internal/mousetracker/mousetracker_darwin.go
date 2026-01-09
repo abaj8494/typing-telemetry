@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package mousetracker
@@ -173,12 +174,12 @@ type MouseMovement struct {
 type MouseClick struct{}
 
 var (
-	mouseChan     chan MouseMovement
-	clickChan     chan MouseClick
-	mu            sync.Mutex
-	running       bool
-	lastX, lastY  float64
-	initialized   bool
+	mouseChan    chan MouseMovement
+	clickChan    chan MouseClick
+	mu           sync.Mutex
+	running      bool
+	lastX, lastY float64
+	initialized  bool
 )
 
 //export goMouseCallback

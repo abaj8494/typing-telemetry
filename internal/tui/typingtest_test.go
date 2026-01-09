@@ -269,9 +269,9 @@ func TestCustomTextGenerationFallback(t *testing.T) {
 
 func TestTypingTestModeKey(t *testing.T) {
 	tests := []struct {
-		name        string
-		opts        TestOptions
-		expected    string
+		name     string
+		opts     TestOptions
+		expected string
 	}{
 		{
 			name:     "default",

@@ -20,13 +20,13 @@ var (
 )
 
 type Model struct {
-	store            *storage.Store
-	todayStats       *storage.DailyStats
-	weekStats        []storage.DailyStats
-	hourlyStats      []storage.HourlyStats
-	width            int
-	height           int
-	err              error
+	store              *storage.Store
+	todayStats         *storage.DailyStats
+	weekStats          []storage.DailyStats
+	hourlyStats        []storage.HourlyStats
+	width              int
+	height             int
+	err                error
 	SwitchToTypingTest bool // Flag to indicate user wants to switch to typing test
 }
 

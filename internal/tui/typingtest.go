@@ -111,38 +111,38 @@ const (
 )
 
 type TypingTestModel struct {
-	targetText    string
-	typed         string
-	startTime     time.Time
-	endTime       time.Time
-	state         TestState
-	width         int
-	height        int
-	sourceFile    string
-	wordCount     int
-	errors        int
-	options       TestOptions
-	allOptions    []Option
-	filteredOpts  []Option
-	selectedIdx   int
-	searchQuery   string
-	inSubMenu     bool
-	subMenuIdx    int
-	personalBest  float64 // Personal best WPM
-	avgWPM        float64 // Average WPM from past tests
-	testCount     int     // Number of tests completed
-	inCustomWPMInput bool   // Whether we're inputting custom WPM
-	customWPMInput   string // Buffer for custom WPM input
-	menuFocus     MenuFocus // Current UI focus
-	menuSelection int       // Selected menu item (0=stats, 1=custom)
-	showStats     bool      // Show stats panel
-	lastWPM       float64   // Last test WPM (for tab restart counting)
-	resultRecorded bool     // Whether current result has been recorded
-	store         *storage.Store // Database storage for persistence
-	customTexts   []string  // Custom text snippets
-	showCustomPanel bool    // Show custom text panel
-	customTextInput string  // Buffer for custom text input
-	inCustomTextInput bool  // Whether we're inputting custom text
+	targetText        string
+	typed             string
+	startTime         time.Time
+	endTime           time.Time
+	state             TestState
+	width             int
+	height            int
+	sourceFile        string
+	wordCount         int
+	errors            int
+	options           TestOptions
+	allOptions        []Option
+	filteredOpts      []Option
+	selectedIdx       int
+	searchQuery       string
+	inSubMenu         bool
+	subMenuIdx        int
+	personalBest      float64        // Personal best WPM
+	avgWPM            float64        // Average WPM from past tests
+	testCount         int            // Number of tests completed
+	inCustomWPMInput  bool           // Whether we're inputting custom WPM
+	customWPMInput    string         // Buffer for custom WPM input
+	menuFocus         MenuFocus      // Current UI focus
+	menuSelection     int            // Selected menu item (0=stats, 1=custom)
+	showStats         bool           // Show stats panel
+	lastWPM           float64        // Last test WPM (for tab restart counting)
+	resultRecorded    bool           // Whether current result has been recorded
+	store             *storage.Store // Database storage for persistence
+	customTexts       []string       // Custom text snippets
+	showCustomPanel   bool           // Show custom text panel
+	customTextInput   string         // Buffer for custom text input
+	inCustomTextInput bool           // Whether we're inputting custom text
 }
 
 type tickMsg time.Time

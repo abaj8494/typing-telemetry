@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package inertia
@@ -143,10 +144,10 @@ func debugLog(format string, args ...interface{}) {
 
 // Config holds inertia configuration
 type Config struct {
-	Enabled       bool
-	MaxSpeed      string  // "very_fast", "fast", "medium"
-	Threshold     int     // ms before acceleration starts (default 200)
-	AccelRate     float64 // acceleration multiplier (default 1.0)
+	Enabled   bool
+	MaxSpeed  string  // "very_fast", "fast", "medium"
+	Threshold int     // ms before acceleration starts (default 200)
+	AccelRate float64 // acceleration multiplier (default 1.0)
 }
 
 // DefaultConfig returns the default inertia configuration
@@ -169,11 +170,11 @@ const baseRepeatInterval = 35
 // Max speed caps (repeat interval in ms)
 // Capped at what terminals/editors can reasonably handle
 var maxSpeedCaps = map[string]int{
-	"ultra_fast": 7,   // ~140 keys/sec (pushing terminal limits)
-	"very_fast":  8,   // ~125 keys/sec
-	"fast":       12,  // ~83 keys/sec
-	"medium":     20,  // ~50 keys/sec
-	"slow":       50,  // ~20 keys/sec
+	"ultra_fast": 7,  // ~140 keys/sec (pushing terminal limits)
+	"very_fast":  8,  // ~125 keys/sec
+	"fast":       12, // ~83 keys/sec
+	"medium":     20, // ~50 keys/sec
+	"slow":       50, // ~20 keys/sec
 }
 
 // State tracking
@@ -187,10 +188,10 @@ type keyState struct {
 }
 
 var (
-	mu             sync.RWMutex
-	config         Config
-	running        bool
-	keyStates      = make(map[int]*keyState)  // keycode -> state
+	mu        sync.RWMutex
+	config    Config
+	running   bool
+	keyStates = make(map[int]*keyState) // keycode -> state
 )
 
 // Global reference to prevent GC
@@ -421,7 +422,6 @@ func stopKeyRepeat(keycode int) {
 	debugLog("STOP_KEY keycode=%d lastStopTime=%v", keycode, state.lastStopTime)
 }
 
-
 // stopOtherKeys stops inertia for all keys except the specified one
 // This is called when a new key is pressed to prevent inertia buildup
 // from continuing when the user switches to typing other keys
@@ -445,7 +445,6 @@ func stopOtherKeys(exceptKeycode int) {
 		}
 	}
 }
-
 
 //export goInertiaEventCallback
 func goInertiaEventCallback(proxy C.CGEventTapProxy, eventType C.CGEventType, event C.CGEventRef, refcon unsafe.Pointer) C.CGEventRef {
