@@ -129,11 +129,11 @@ func TestFormatNumRounding(t *testing.T) {
 		input    int64
 		expected string
 	}{
-		{1049, "1.0K"},  // 1.049 rounds down to 1.0
-		{1050, "1.1K"},  // 1.050 rounds to 1.1
-		{1450, "1.4K"},  // 1.450 rounds down to 1.4 (banker's rounding)
-		{1550, "1.6K"},  // 1.550 rounds up to 1.6
-		{1555, "1.6K"},  // 1.555 rounds to 1.6
+		{1049, "1.0K"}, // 1.049 rounds down to 1.0
+		{1050, "1.1K"}, // 1.050 rounds to 1.1
+		{1450, "1.4K"}, // 1.450 rounds down to 1.4 (banker's rounding)
+		{1550, "1.6K"}, // 1.550 rounds up to 1.6
+		{1555, "1.6K"}, // 1.555 rounds to 1.6
 	}
 
 	for _, tt := range tests {

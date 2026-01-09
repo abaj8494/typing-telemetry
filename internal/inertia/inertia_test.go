@@ -61,11 +61,11 @@ func TestGetAccelerationStep(t *testing.T) {
 
 func TestGetRepeatInterval(t *testing.T) {
 	tests := []struct {
-		name     string
-		keyCount int
-		maxSpeed string
+		name      string
+		keyCount  int
+		maxSpeed  string
 		accelRate float64
-		expected time.Duration
+		expected  time.Duration
 	}{
 		// Step 1 (keyCount < 7), base interval / (1 * accelRate)
 		{"step1 fast rate1", 0, "fast", 1.0, 35 * time.Millisecond},
@@ -76,7 +76,7 @@ func TestGetRepeatInterval(t *testing.T) {
 		{"step2 fast rate2", 10, "fast", 2.0, 12 * time.Millisecond}, // 35/(2*2) = 8.75, clamped to 12
 
 		// Max speed caps
-		{"step9 ultra_fast", 100, "ultra_fast", 1.0, 7 * time.Millisecond},  // 35/9 = 3.88, clamped to 7
+		{"step9 ultra_fast", 100, "ultra_fast", 1.0, 7 * time.Millisecond}, // 35/9 = 3.88, clamped to 7
 		{"step9 very_fast", 100, "very_fast", 1.0, 8 * time.Millisecond},   // clamped to 8
 		{"step9 fast", 100, "fast", 1.0, 12 * time.Millisecond},            // clamped to 12
 		{"step9 medium", 100, "medium", 1.0, 20 * time.Millisecond},        // clamped to 20

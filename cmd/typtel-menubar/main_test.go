@@ -129,10 +129,10 @@ func TestFormatDistanceShort(t *testing.T) {
 		pixels   float64
 		contains string
 	}{
-		{"small distance", 100, "in"},               // inches
-		{"medium distance", 10000, "ft"},            // feet
-		{"large distance", 100000000, "mi"},         // miles (need more pixels at ~100 PPI)
-		{"zero distance", 0, "0"},                   // zero
+		{"small distance", 100, "in"},       // inches
+		{"medium distance", 10000, "ft"},    // feet
+		{"large distance", 100000000, "mi"}, // miles (need more pixels at ~100 PPI)
+		{"zero distance", 0, "0"},           // zero
 	}
 
 	for _, tt := range tests {
@@ -163,11 +163,11 @@ func TestFormatDistanceShortUnitConversion(t *testing.T) {
 func TestHeatmapColorConsistency(t *testing.T) {
 	// Verify colors are in increasing intensity order
 	colors := []string{
-		getHeatmapColor(0, 100),    // darkest
-		getHeatmapColor(10, 100),   // light
-		getHeatmapColor(30, 100),   // medium-light
-		getHeatmapColor(60, 100),   // medium
-		getHeatmapColor(100, 100),  // brightest
+		getHeatmapColor(0, 100),   // darkest
+		getHeatmapColor(10, 100),  // light
+		getHeatmapColor(30, 100),  // medium-light
+		getHeatmapColor(60, 100),  // medium
+		getHeatmapColor(100, 100), // brightest
 	}
 
 	// All colors should be valid hex
