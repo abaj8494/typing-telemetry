@@ -70,6 +70,35 @@ func TestTestCmdFlags(t *testing.T) {
 	}
 }
 
+func TestViewCmdExists(t *testing.T) {
+	if viewCmd == nil {
+		t.Fatal("viewCmd should not be nil")
+	}
+
+	if viewCmd.Use != "v" {
+		t.Errorf("viewCmd.Use = %q, want 'v'", viewCmd.Use)
+	}
+
+	// Check aliases
+	aliases := viewCmd.Aliases
+	hasView := false
+	hasCharts := false
+	for _, a := range aliases {
+		if a == "view" {
+			hasView = true
+		}
+		if a == "charts" {
+			hasCharts = true
+		}
+	}
+	if !hasView {
+		t.Error("viewCmd should have 'view' alias")
+	}
+	if !hasCharts {
+		t.Error("viewCmd should have 'charts' alias")
+	}
+}
+
 func TestRootCmdHasSubcommands(t *testing.T) {
 	commands := rootCmd.Commands()
 
@@ -79,7 +108,7 @@ func TestRootCmdHasSubcommands(t *testing.T) {
 		cmdNames[cmd.Use] = true
 	}
 
-	expectedCmds := []string{"stats", "today", "test"}
+	expectedCmds := []string{"stats", "today", "test", "v"}
 	for _, name := range expectedCmds {
 		if !cmdNames[name] {
 			t.Errorf("rootCmd should have subcommand %q", name)

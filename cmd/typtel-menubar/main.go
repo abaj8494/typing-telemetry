@@ -38,24 +38,59 @@ static int showAlert(const char* messageText, const char* informativeText, const
     return result;
 }
 
-// Open URL in default browser
-static void openURL(const char* url) {
-    dispatch_async(dispatch_get_main_queue(), ^{
+// Open URL in default browser (synchronous, returns success)
+static int openURL(const char* url) {
+    __block int success = 0;
+
+    void (^openBlock)(void) = ^{
         @autoreleasepool {
             NSURL *nsurl = [NSURL URLWithString:[NSString stringWithUTF8String:url]];
-            [[NSWorkspace sharedWorkspace] openURL:nsurl];
+            if (nsurl != nil) {
+                success = [[NSWorkspace sharedWorkspace] openURL:nsurl] ? 1 : 0;
+            }
         }
-    });
+    };
+
+    if ([NSThread isMainThread]) {
+        openBlock();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), openBlock);
+    }
+
+    return success;
 }
 
-// Open file in default application
-static void openFile(const char* path) {
-    dispatch_async(dispatch_get_main_queue(), ^{
+// Open file in default application (synchronous, returns success)
+static int openFile(const char* path) {
+    __block int success = 0;
+
+    void (^openBlock)(void) = ^{
         @autoreleasepool {
-            NSURL *fileURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
-            [[NSWorkspace sharedWorkspace] openURL:fileURL];
+            NSString *pathStr = [NSString stringWithUTF8String:path];
+            NSURL *fileURL = [NSURL fileURLWithPath:pathStr];
+            if (fileURL != nil) {
+                NSWorkspaceOpenConfiguration *config = [NSWorkspaceOpenConfiguration configuration];
+                dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+
+                [[NSWorkspace sharedWorkspace] openURL:fileURL
+                    configuration:config
+                    completionHandler:^(NSRunningApplication *app, NSError *error) {
+                        success = (error == nil) ? 1 : 0;
+                        dispatch_semaphore_signal(sem);
+                    }];
+
+                dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+            }
         }
-    });
+    };
+
+    if ([NSThread isMainThread]) {
+        openBlock();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), openBlock);
+    }
+
+    return success;
 }
 */
 import "C"
@@ -806,27 +841,27 @@ func updateLeaderboard() {
 }
 
 func showAbout() {
-	go func() {
-		openURLNative("https://github.com/abaj8494/typing-telemetry")
-	}()
-
-	showAlertDialog("Typing Telemetry",
+	response := showAlertDialog("Typing Telemetry",
 		fmt.Sprintf("Version %s\n\nTrack your keystrokes and typing speed.\n\nGitHub: github.com/abaj8494/typing-telemetry", Version),
-		[]string{"OK"})
+		[]string{"OK", "Open GitHub"})
+
+	if response == 1 {
+		if !openURLNative("https://github.com/abaj8494/typing-telemetry") {
+			log.Printf("Failed to open GitHub URL")
+		}
+	}
 }
 
 func quit() {
 	response := showAlertDialog("Quit Typing Telemetry",
-		"Choose how to quit:",
-		[]string{"Cancel", "Hide Menu Bar Only", "Stop Tracking & Quit"})
+		"This will stop keystroke tracking and close the menu bar app.\n\nTo restart, run: open -a typtel-menubar",
+		[]string{"Cancel", "Quit"})
 
-	switch response {
-	case 0: // Cancel
-		return
-	case 1: // Hide Menu Bar Only
-		systray.Quit()
-	case 2: // Stop Tracking & Quit
+	if response == 1 {
+		log.Println("User requested quit")
 		keylogger.Stop()
+		mousetracker.Stop()
+		inertia.Stop()
 		if store != nil {
 			store.Close()
 		}
@@ -876,17 +911,17 @@ func showAlertDialog(messageText, informativeText string, buttons []string) int 
 }
 
 // Open URL in default browser using native macOS API
-func openURLNative(url string) {
+func openURLNative(url string) bool {
 	cURL := C.CString(url)
 	defer C.free(unsafe.Pointer(cURL))
-	C.openURL(cURL)
+	return C.openURL(cURL) == 1
 }
 
 // Open file using native macOS API
-func openFileNative(path string) {
+func openFileNative(path string) bool {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
-	C.openFile(cPath)
+	return C.openFile(cPath) == 1
 }
 
 func getLogDir() (string, error) {
@@ -953,12 +988,23 @@ func formatDistance(pixels float64) string {
 
 func showLeaderboard() {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Panic in showLeaderboard: %v", r)
+			}
+		}()
+
 		htmlPath, err := generateLeaderboardHTML()
 		if err != nil {
 			log.Printf("Failed to generate leaderboard: %v", err)
+			showAlertDialog("Error", fmt.Sprintf("Failed to generate leaderboard: %v", err), []string{"OK"})
 			return
 		}
-		openFileNative(htmlPath)
+
+		if !openFileNative(htmlPath) {
+			log.Printf("Failed to open leaderboard file: %s", htmlPath)
+			showAlertDialog("Error", "Failed to open leaderboard in browser. The file was saved to:\n"+htmlPath, []string{"OK"})
+		}
 	}()
 }
 
@@ -1113,12 +1159,23 @@ func generateLeaderboardHTML() (string, error) {
 
 func openCharts() {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Panic in openCharts: %v", r)
+			}
+		}()
+
 		htmlPath, err := generateChartsHTML()
 		if err != nil {
 			log.Printf("Failed to generate charts: %v", err)
+			showAlertDialog("Error", fmt.Sprintf("Failed to generate charts: %v", err), []string{"OK"})
 			return
 		}
-		openFileNative(htmlPath)
+
+		if !openFileNative(htmlPath) {
+			log.Printf("Failed to open charts file: %s", htmlPath)
+			showAlertDialog("Error", "Failed to open charts in browser. The file was saved to:\n"+htmlPath, []string{"OK"})
+		}
 	}()
 }
 
